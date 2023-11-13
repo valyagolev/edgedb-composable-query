@@ -9,6 +9,16 @@ pub fn query_add_indent(s: &str) -> String {
 
 pub trait AsEdgedbVar {
     const EDGEDB_TYPE: &'static str;
+    const IS_OPTIONAL: bool = false;
+
+    fn full_type() -> String {
+        if Self::IS_OPTIONAL {
+            format!("optional {}", Self::EDGEDB_TYPE)
+        } else {
+            // Self::EDGEDB_TYPE.to_string()
+            format!("required {}", Self::EDGEDB_TYPE)
+        }
+    }
 }
 
 impl AsEdgedbVar for i32 {
@@ -23,6 +33,7 @@ impl AsEdgedbVar for Uuid {
 
 impl<T: AsEdgedbVar> AsEdgedbVar for Option<T> {
     const EDGEDB_TYPE: &'static str = T::EDGEDB_TYPE;
+    const IS_OPTIONAL: bool = true;
 }
 
 impl<T: AsEdgedbVar> ComposableQuerySelector for T {

@@ -66,7 +66,7 @@ impl ToTokens for Params {
                 fmt.write_fmt(format_args!(
                     "\t{} := <{}>{},\n",
                     #name,
-                    <#ty as ::edgedb_composable_query::AsEdgedbVar>::EDGEDB_TYPE,
+                    <#ty as ::edgedb_composable_query::AsEdgedbVar>::full_type(),
                     args[#name]
                 ))?;
             })
