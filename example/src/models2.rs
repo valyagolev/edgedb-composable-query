@@ -13,8 +13,13 @@ struct Inner {
 
 #[derive(ComposableQuery)]
 #[params(id: Uuid)]
-#[select("select Inner filter .id = id limit 1")]
+#[select("select Inner filter .id = id")]
 struct InnerById(Inner);
+
+#[derive(ComposableQuery)]
+#[params(cnt: usize)]
+#[select("select Inner limit cnt")]
+struct AllInner(Vec<Inner>);
 
 #[derive(ComposableQuery)]
 #[params(req: String, opt: Option<String>)]
@@ -35,6 +40,8 @@ mod test {
         println!("\n\n{}", super::InnerById::query());
 
         println!("\n\n{}", super::Insert::query());
+
+        println!("\n\n{}", super::AllInner::query());
 
         // println!("{}", super::WrappedQuery::query());
     }

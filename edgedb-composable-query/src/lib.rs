@@ -24,6 +24,9 @@ pub trait AsEdgedbVar {
 impl AsEdgedbVar for i32 {
     const EDGEDB_TYPE: &'static str = "int32";
 }
+impl AsEdgedbVar for usize {
+    const EDGEDB_TYPE: &'static str = "int64";
+}
 impl AsEdgedbVar for String {
     const EDGEDB_TYPE: &'static str = "str";
 }
@@ -69,6 +72,14 @@ pub trait ComposableQuerySelector {
         };
 
         Self::format_selector(fmt)
+    }
+}
+
+impl<T: ComposableQuerySelector> ComposableQuerySelector for Vec<T> {
+    const RESULT_TYPE: ComposableQueryResultType = T::RESULT_TYPE;
+
+    fn format_selector(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
+        T::format_selector(fmt)
     }
 }
 
