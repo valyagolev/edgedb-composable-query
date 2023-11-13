@@ -64,9 +64,9 @@ impl ToTokens for Params {
         for (name, ty) in self.0.iter() {
             tokens.append_all(quote! {
                 fmt.write_fmt(format_args!(
-                    "\t{} := <{}>{},\n",
+                    "\t{} := {}{},\n",
                     #name,
-                    <#ty as ::edgedb_composable_query::AsEdgedbVar>::full_type(),
+                    <#ty as ::edgedb_composable_query::AsEdgedbVar>::type_cast(),
                     args[#name]
                 ))?;
             })
@@ -153,7 +153,7 @@ impl ToTokens for Query {
         tokens.append_all(quote! {
             const ARG_NAMES: &'static [&'static str] = &[#( #argnames ),*];
 
-            type ArgTypes = ( #( #argtypes ),* );
+            type ArgTypes = ( #( #argtypes ),* , );
             type ReturnType = Self;
 
             fn format_query(

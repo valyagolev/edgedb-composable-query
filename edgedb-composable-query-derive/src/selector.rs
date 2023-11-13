@@ -43,13 +43,13 @@ impl QuerySelector {
     pub fn as_composable_query_result_type(&self) -> TokenStream {
         match self {
             QuerySelector::Selector(..) => {
-                quote! {::edgedb_composable_query::ComposableQueryResultType::Selector}
+                quote! {::edgedb_composable_query::ComposableQueryResultKind::Selector}
             }
             QuerySelector::Object(..) => {
-                quote! {::edgedb_composable_query::ComposableQueryResultType::Selector}
+                quote! {::edgedb_composable_query::ComposableQueryResultKind::Selector}
             }
             _ => {
-                quote! {::edgedb_composable_query::ComposableQueryResultType::Field}
+                quote! {::edgedb_composable_query::ComposableQueryResultKind::Field}
             }
         }
     }

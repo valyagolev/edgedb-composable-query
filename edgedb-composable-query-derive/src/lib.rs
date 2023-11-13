@@ -60,8 +60,24 @@ fn derive_composable_query_selector_impl(
     let result_type = selector.as_composable_query_result_type();
 
     Ok(quote! {
+        impl ::edgedb_composable_query::AsEdgedbVar for #ident {
+            const EDGEDB_TYPE_NAME: Option<&'static str> = None;
+            const IS_OPTIONAL: bool = false;
+
+            fn as_query_arg(&self) -> ::edgedb_protocol::value::Value {
+                // (*self).into()
+                // dbg!(self);
+                todo!("1");
+            }
+
+            fn from_query_result(t: ::edgedb_protocol::value::Value) -> Self {
+                dbg!(&t);
+                todo!("2");
+            }
+        }
+
         impl ::edgedb_composable_query::ComposableQuerySelector for #ident {
-            const RESULT_TYPE: ::edgedb_composable_query::ComposableQueryResultType =
+            const RESULT_TYPE: ::edgedb_composable_query::ComposableQueryResultKind =
                 #result_type;
 
             fn format_selector(fmt: &mut impl ::std::fmt::Write) -> Result<(), std::fmt::Error> {

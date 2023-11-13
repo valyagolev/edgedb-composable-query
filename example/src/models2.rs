@@ -1,7 +1,7 @@
 use edgedb_composable_query_derive::{ComposableQuery, ComposableQuerySelector};
 use edgedb_protocol::model::Uuid;
 
-#[derive(ComposableQuerySelector)]
+#[derive(ComposableQuerySelector, Debug)]
 struct Inner {
     id: Uuid,
     opt: Option<String>,
@@ -16,7 +16,7 @@ struct Inner {
 #[select("select Inner filter .id = id")]
 struct InnerById(Inner);
 
-#[derive(ComposableQuery)]
+#[derive(ComposableQuery, Debug)]
 #[params(cnt: usize)]
 #[select("select Inner limit cnt")]
 struct AllInner(Vec<Inner>);
@@ -28,7 +28,7 @@ struct Insert(Inner);
 
 #[cfg(test)]
 mod test {
-    use edgedb_composable_query::{ComposableQuery, ComposableQuerySelector};
+    use edgedb_composable_query::{query, ComposableQuery, ComposableQuerySelector};
 
     #[test]
     fn show_me() {
@@ -44,5 +44,14 @@ mod test {
         println!("\n\n{}", super::AllInner::query());
 
         // println!("{}", super::WrappedQuery::query());
+    }
+
+    #[tokio::test]
+    async fn test_me() {
+        let conn = edgedb_tokio::create_client().await.unwrap();
+
+        let res = query::<super::AllInner>(conn, (1usize,)).await.unwrap();
+
+        dbg!(res);
     }
 }
