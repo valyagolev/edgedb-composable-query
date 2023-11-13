@@ -60,6 +60,9 @@ pub trait ComposableQuerySelector {
 pub trait ComposableQuery: ComposableQuerySelector {
     const ARG_NAMES: &'static [&'static str];
 
+    type ARG_TYPES;
+    type RETURN_TYPE;
+
     fn format_query(
         fmt: &mut impl std::fmt::Write,
         args: &::std::collections::HashMap<&str, String>,

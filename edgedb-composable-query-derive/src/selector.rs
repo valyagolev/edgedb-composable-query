@@ -20,7 +20,7 @@ impl From<&ComposableQueryReturn> for SelectorValue {
 }
 
 #[derive(Debug)]
-pub enum QueryResult {
+pub enum QuerySelector {
     /// select fields from object. requires [select(object)]
     /// as query return: `select obj {field, field2: ...}`
     /// as subquery return: `select outerobj {thisfield {field, field2: ...}}`
@@ -39,13 +39,13 @@ pub enum QueryResult {
     Direct(QueryVar),
 }
 
-impl QueryResult {
+impl QuerySelector {
     pub fn as_composable_query_result_type(&self) -> TokenStream {
         match self {
-            QueryResult::Selector(..) => {
+            QuerySelector::Selector(..) => {
                 quote! {::edgedb_composable_query::ComposableQueryResultType::Selector}
             }
-            QueryResult::Object(..) => {
+            QuerySelector::Object(..) => {
                 quote! {::edgedb_composable_query::ComposableQueryResultType::Selector}
             }
             _ => {
@@ -56,10 +56,10 @@ impl QueryResult {
 }
 
 /// will be code that writes to fmt
-impl ToTokens for QueryResult {
+impl ToTokens for QuerySelector {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            QueryResult::Selector(fr, vals) => {
+            QuerySelector::Selector(fr, vals) => {
                 let (names, vars) = vals
                     .iter()
                     .map(|(n, v)| match v {
@@ -92,7 +92,7 @@ impl ToTokens for QueryResult {
                     )?;
                 })
             }
-            QueryResult::Object(mapping) => {
+            QuerySelector::Object(mapping) => {
                 let mapping_tuples = mapping.iter().map(|(k, v)| {
                     quote! {
                         (#k, #v)
@@ -109,7 +109,7 @@ impl ToTokens for QueryResult {
                     ))?;
                 });
             }
-            QueryResult::Tuple(vars) => {
+            QuerySelector::Tuple(vars) => {
                 tokens.append_all(quote! {
                     fmt.write_fmt(format_args!(
                         "({})",
@@ -120,7 +120,7 @@ impl ToTokens for QueryResult {
                     ))?;
                 });
             }
-            QueryResult::Direct(direct) => {
+            QuerySelector::Direct(direct) => {
                 tokens.append_all(quote! {
                     fmt.write_str(
                         #direct

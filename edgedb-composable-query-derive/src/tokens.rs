@@ -11,7 +11,7 @@ use syn::{
 
 use crate::{
     query::{Params, Query, QueryVar, With},
-    selector::QueryResult,
+    selector::QuerySelector,
     ComposableQueryOpts, ComposableQueryReturn,
 };
 use strum_macros::IntoStaticStr;
@@ -95,14 +95,14 @@ impl ComposableQueryAttribute {
             ));
         }
 
-        let result: Result<QueryResult, &str> = (|| {
+        let result: Result<QuerySelector, &str> = (|| {
             let ast::Data::Struct(fields) = fields else {
                 return Err("enums are not supported");
             };
 
             if fields.is_empty() {
                 match direct {
-                    Some(name) => return Ok(QueryResult::Direct(QueryVar::Var(name.clone()))),
+                    Some(name) => return Ok(QuerySelector::Direct(QueryVar::Var(name.clone()))),
                     _ => {
                         return Err("expected #[direct] attribute for empty structs");
                     }
@@ -131,17 +131,17 @@ impl ComposableQueryAttribute {
                     .collect_vec();
 
                 if let Some(s) = selector_from.as_simple_name_or_ref() {
-                    return Ok(QueryResult::Selector(s.to_owned(), vars_to_select));
+                    return Ok((QuerySelector::Selector(s.to_owned(), vars_to_select)));
                 }
 
                 let name = "_selector".to_string();
 
                 withs.push(With(name.clone(), selector_from.clone()));
 
-                return Ok(QueryResult::Selector(name, vars_to_select));
+                return Ok((QuerySelector::Selector(name, vars_to_select)));
             }
 
-            Ok(QueryResult::Object(
+            Ok((QuerySelector::Object(
                 fields
                     .iter()
                     .map(|f| {
@@ -153,7 +153,7 @@ impl ComposableQueryAttribute {
                         (fname.clone(), f.var.clone().unwrap_or(QueryVar::Var(fname)))
                     })
                     .collect_vec(),
-            ))
+            )))
         })();
 
         let result = match result {

@@ -4,9 +4,9 @@ use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::quote;
 use quote::{ToTokens, TokenStreamExt};
-use syn::Path;
+use syn::{Path, Type};
 
-use crate::selector::QueryResult;
+use crate::selector::QuerySelector;
 
 #[derive(Debug, Clone, Default)]
 pub struct Params(pub Vec<(String, syn::Type)>);
@@ -23,11 +23,17 @@ pub enum QueryVar {
     Call(Path, HashMap<String, QueryVar>),
 }
 
+// #[derive(Debug)]
+// pub enum QueryResult {
+//     QuerySelector(QuerySelector),
+//     InnerType(Type),
+// }
+
 #[derive(Debug)]
 pub struct Query {
     pub params: Params,
     pub withs: Vec<With>,
-    pub result: QueryResult,
+    pub result: QuerySelector,
 }
 
 impl QueryVar {
@@ -129,16 +135,25 @@ impl ToTokens for Query {
 
         // self.result.to_tokens(&mut inner);
 
-        let argnames = self.params.0.iter().map(|p| p.0.as_str()).collect_vec();
+        let (argnames, argtypes) = self
+            .params
+            .0
+            .iter()
+            .cloned()
+            .unzip::<_, _, Vec<String>, Vec<Type>>();
 
         let fr = match &self.result {
-            QueryResult::Selector(what, _) => quote! {format!("select ({})", #what)},
-            QueryResult::Object(_) | QueryResult::Tuple(_) => quote! {"select "},
-            QueryResult::Direct(what) => what.to_token_stream(),
+            QuerySelector::Selector(what, _) => quote! {format!("select ({})", #what)},
+            QuerySelector::Object(_) | QuerySelector::Tuple(_) => quote! {"select "},
+            QuerySelector::Direct(what) => what.to_token_stream(),
         };
 
         tokens.append_all(quote! {
             const ARG_NAMES: &'static [&'static str] = &[#( #argnames ),*];
+
+            type ARG_TYPES = ( #( #argtypes ),* );
+            type RETURN_TYPE = Self;
+
 
             fn format_query(
                 fmt: &mut impl ::std::fmt::Write,
