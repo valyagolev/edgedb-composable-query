@@ -127,18 +127,9 @@ impl ToTokens for QueryResult {
             QueryResult::Selector(fr, vals) => {
                 let (names, vars) = vals
                     .iter()
-                    .map(|(n, v)| {
-                        // let v = v.as_ref().map(|v| v.to_token_stream()).unwrap_or_else(|| {
-                        //     quote! {
-                        //         <#n as ::edgedb_composable_query::ComposableQuerySelector>::FIELDS
-                        //     }
-                        // });
-
-                        // (n, v)
-                        match v {
-                            Some(v) => (n, quote! {::std::option::Option::Some(#v.to_string())}),
-                            None => (n, quote! {::std::option::Option::None::<String>}),
-                        }
+                    .map(|(n, v)| match v {
+                        Some(v) => (n, quote! {::std::option::Option::Some(#v.to_string())}),
+                        None => (n, quote! {::std::option::Option::None::<String>}),
                     })
                     .unzip::<_, _, Vec<_>, Vec<_>>();
 
@@ -192,10 +183,6 @@ impl ToTokens for QueryResult {
                 });
             }
         };
-
-        // tokens.append_all(quote! {
-        //     fmt.write_str(#text)?;
-        // })
     }
 }
 

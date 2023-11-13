@@ -18,10 +18,10 @@ impl AsEdgedbVar for String {
 }
 
 pub trait ComposableQuerySelector {
-    const FIELDS: &'static [&'static str];
+    fn format_selector(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error>;
 }
 
-pub trait ComposableQuery {
+pub trait ComposableQuery: ComposableQuerySelector {
     const ARG_NAMES: &'static [&'static str];
 
     fn format_query(

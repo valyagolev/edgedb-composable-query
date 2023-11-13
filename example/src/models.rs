@@ -1,6 +1,7 @@
 use edgedb_composable_query_derive::ComposableQuery;
 
 #[derive(ComposableQuery)]
+#[params(arg: i32)]
 #[select("select Inner limit 1")]
 struct Inner {
     opt: Option<String>,
@@ -8,6 +9,9 @@ struct Inner {
 
     #[var("len(.req)")]
     strlen: i64,
+
+    #[var("arg+1")]
+    arg_plus_one: i32,
 }
 
 #[derive(ComposableQuery)]
