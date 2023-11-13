@@ -17,8 +17,40 @@ impl AsEdgedbVar for String {
     const EDGEDB_TYPE: &'static str = "str";
 }
 
+impl<T: AsEdgedbVar> AsEdgedbVar for Option<T> {
+    const EDGEDB_TYPE: &'static str = T::EDGEDB_TYPE;
+}
+
+impl<T: AsEdgedbVar> ComposableQuerySelector for T {
+    const RESULT_TYPE: ComposableQueryResultType = ComposableQueryResultType::Field;
+
+    fn format_selector(_fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
+        Ok(())
+    }
+}
+
+pub enum ComposableQueryResultType {
+    Field,
+    Selector,
+    FreeObject,
+}
+
 pub trait ComposableQuerySelector {
+    const RESULT_TYPE: ComposableQueryResultType;
+
     fn format_selector(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error>;
+
+    fn format_subquery(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
+        match Self::RESULT_TYPE {
+            ComposableQueryResultType::Field => {
+                return Ok(());
+            }
+            ComposableQueryResultType::Selector => fmt.write_str(": ")?,
+            ComposableQueryResultType::FreeObject => fmt.write_str(" := ")?,
+        };
+
+        Self::format_selector(fmt)
+    }
 }
 
 pub trait ComposableQuery: ComposableQuerySelector {

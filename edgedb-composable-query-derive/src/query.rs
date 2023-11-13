@@ -131,6 +131,12 @@ impl ToTokens for Query {
 
         let argnames = self.params.0.iter().map(|p| p.0.as_str()).collect_vec();
 
+        let fr = match &self.result {
+            QueryResult::Selector(what, _) => quote! {format!("select ({})", #what)},
+            QueryResult::Object(_) | QueryResult::Tuple(_) => quote! {"select "},
+            QueryResult::Direct(what) => what.to_token_stream(),
+        };
+
         tokens.append_all(quote! {
             const ARG_NAMES: &'static [&'static str] = &[#( #argnames ),*];
 
@@ -142,6 +148,8 @@ impl ToTokens for Query {
                 use ::edgedb_composable_query::ComposableQuerySelector;
 
                 #inner
+
+                fmt.write_str(&#fr)?;
 
                 Self::format_selector(fmt)?;
 

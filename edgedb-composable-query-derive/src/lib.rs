@@ -29,8 +29,13 @@ fn derive_composable_query_impl(item: DeriveInput) -> darling::Result<proc_macro
     let selector = &query.result;
     let ident = &item.ident;
 
+    let result_type = selector.as_composable_query_result_type();
+
     Ok(quote! {
         impl ::edgedb_composable_query::ComposableQuerySelector for #ident {
+            const RESULT_TYPE: ::edgedb_composable_query::ComposableQueryResultType =
+                #result_type;
+
             fn format_selector(fmt: &mut impl ::std::fmt::Write) -> Result<(), std::fmt::Error> {
                 use ::edgedb_composable_query::itertools::Itertools;
 
@@ -70,6 +75,7 @@ mod test {
     use crate::derive_composable_query_for_test;
     use proc_macro2::TokenStream;
     use quote::quote;
+    use syn::{parse::Parse, Type, TypePath};
 
     fn on_one_quote(input: TokenStream) -> String {
         let out = derive_composable_query_for_test(input).unwrap();
@@ -115,6 +121,17 @@ mod test {
 
     #[test]
     fn insta_test_struct2() {
+        // let t = quote! {
+        //     Option<String>
+        // };
+
+        // dbg!(syn::parse2::<Type>(t).unwrap());
+        // let t = quote! {
+        //     Option::<String>
+        // };
+        // dbg!(syn::parse2::<Type>(t).unwrap());
+
+        // todo!();
         let input = quote! {
 
         //             #[derive(ComposableQuery)]
@@ -131,6 +148,7 @@ mod test {
                     #[select("select Outer limit 1")]
                     struct Outer {
                         inner: Inner,
+                        some_field: Option<String>,
                         other_field: String,
                     }
 

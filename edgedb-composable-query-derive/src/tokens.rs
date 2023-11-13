@@ -125,7 +125,7 @@ impl ComposableQueryAttribute {
                             f.field_name
                                 .clone()
                                 .expect("We thought we have named fields here"),
-                            f.var.clone(),
+                            f.into(),
                         )
                     })
                     .collect_vec();

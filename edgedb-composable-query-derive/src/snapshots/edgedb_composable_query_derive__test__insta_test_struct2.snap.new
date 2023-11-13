@@ -1,28 +1,44 @@
 ---
 source: edgedb-composable-query-derive/src/lib.rs
-assertion_line: 181
+assertion_line: 159
 expression: formatted
 ---
-impl ::edgedb_composable_query::ComposableQuery for Outer {
-    const ARG_NAMES: &'static [&'static str] = &[];
-    fn format_query(
-    fmt: &mut impl ::std::fmt::Write,
-        args: &::std::collections::HashMap<&str, String>,
-    ) -> Result<(), ::std::fmt::Error> {
+impl ::edgedb_composable_query::ComposableQuerySelector for Outer {
+    const RESULT_TYPE: ::edgedb_composable_query::ComposableQueryResultType = ::edgedb_composable_query::ComposableQueryResultType::Selector;
+    fn format_selector(fmt: &mut impl ::std::fmt::Write) -> Result<(), std::fmt::Error> {
         use ::edgedb_composable_query::itertools::Itertools;
-        fmt.write_str("with\n")?;
-        fmt.write_fmt(
-            format_args!("\t{} := ({}),\n", "_selector", "select Outer limit 1"),
-        )?;
         fmt.write_fmt(
             format_args!(
                 "select {} {{\n\t{}\n}}", "_selector", [("inner",
-                ::std::option::Option::None), ("other_field",
-                ::std::option::Option::None)].map(| (n, v) | match v { Some(v) =>
+                ::std::option::Option::Some({ let mut buf = String::new(); < Inner as
+                ::edgedb_composable_query::ComposableQuerySelector > ::format_subquery(&
+                mut buf) ?; buf })), ("some_field", ::std::option::Option::Some({ let mut
+                buf = String::new(); < Option < String > as
+                ::edgedb_composable_query::ComposableQuerySelector > ::format_subquery(&
+                mut buf) ?; buf })), ("other_field", ::std::option::Option::Some({ let
+                mut buf = String::new(); < String as
+                ::edgedb_composable_query::ComposableQuerySelector > ::format_subquery(&
+                mut buf) ?; buf }))].map(| (n, v) | match v { Some(v) =>
                 format!("{} := ({})", n, v), None => String::from(n) }).join:: < & str >
                 (",\n\t")
             ),
         )?;
+        Ok(())
+    }
+}
+impl ::edgedb_composable_query::ComposableQuery for Outer {
+    const ARG_NAMES: &'static [&'static str] = &[];
+    fn format_query(
+        fmt: &mut impl ::std::fmt::Write,
+        args: &::std::collections::HashMap<&str, String>,
+    ) -> Result<(), ::std::fmt::Error> {
+        use ::edgedb_composable_query::itertools::Itertools;
+        use ::edgedb_composable_query::ComposableQuerySelector;
+        fmt.write_str("with\n")?;
+        fmt.write_fmt(
+            format_args!("\t{} := ({}),\n", "_selector", "select Outer limit 1"),
+        )?;
+        Self::format_selector(fmt)?;
         Ok(())
     }
 }

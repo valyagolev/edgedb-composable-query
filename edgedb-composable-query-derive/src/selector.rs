@@ -1,18 +1,58 @@
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens, TokenStreamExt};
+use syn::Type;
 
-use crate::query::QueryVar;
+use crate::{fields::ComposableQueryReturn, query::QueryVar};
+
+#[derive(Debug)]
+pub enum SelectorValue {
+    SubSelector(Type),
+    Computed(QueryVar),
+}
+
+impl From<&ComposableQueryReturn> for SelectorValue {
+    fn from(cqr: &ComposableQueryReturn) -> Self {
+        match &cqr.var {
+            Some(v) => SelectorValue::Computed(v.clone()),
+            None => SelectorValue::SubSelector(cqr.ty.clone()),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub enum QueryResult {
     /// select fields from object. requires [select(object)]
-    Selector(String, Vec<(String, Option<QueryVar>)>),
+    /// as query return: `select obj {field, field2: ...}`
+    /// as subquery return: `select outerobj {thisfield {field, field2: ...}}`
+    Selector(String, Vec<(String, SelectorValue)>),
+
     /// default for named-structs: select fields from object. accepts [var(...)]
+    /// as query return: `select {field := a, field2 := b}
+    /// as subquery return: `select outerobj {thisfield := {field := a, field2 := b}}`
     Object(Vec<(String, QueryVar)>),
     /// todo: default for tuple-structs
+    /// ?
     Tuple(Vec<QueryVar>),
     /// requires empty struct
+    /// as query return: `whatever`
+    /// as subquery return:  `select outerobj {thisfield := (whatever)}`
     Direct(QueryVar),
+}
+
+impl QueryResult {
+    pub fn as_composable_query_result_type(&self) -> TokenStream {
+        match self {
+            QueryResult::Selector(..) => {
+                quote! {::edgedb_composable_query::ComposableQueryResultType::Selector}
+            }
+            QueryResult::Object(..) => {
+                quote! {::edgedb_composable_query::ComposableQueryResultType::Selector}
+            }
+            _ => {
+                quote! {::edgedb_composable_query::ComposableQueryResultType::Field}
+            }
+        }
+    }
 }
 
 /// will be code that writes to fmt
@@ -23,21 +63,31 @@ impl ToTokens for QueryResult {
                 let (names, vars) = vals
                     .iter()
                     .map(|(n, v)| match v {
-                        Some(v) => (n, quote! {::std::option::Option::Some(#v.to_string())}),
-                        None => (n, quote! {::std::option::Option::None::<String>}),
+                        SelectorValue::SubSelector(ty) => {
+                            let ty = ty;
+                            dbg!(ty);
+                            (
+                                n,
+                                quote! {{
+                                    let mut buf = String::new();
+                                    <#ty as ::edgedb_composable_query::ComposableQuerySelector>::format_subquery(&mut buf)?;
+
+                                    ::edgedb_composable_query::query_add_indent(&buf)
+                                }},
+                            )
+                        }
+                        SelectorValue::Computed(v) => {
+                            (n, quote! {format!(":= ({})", #v.to_string())})
+                        }
                     })
                     .unzip::<_, _, Vec<_>, Vec<_>>();
 
                 tokens.append_all(quote! {
                     fmt.write_fmt(
                         format_args!(
-                            "select {} {{\n\t{}\n}}",
-                            #fr,
+                            "{{\n\t{}\n}}",
                             [#( (#names, #vars) ),*].map(
-                                |(n, v)| match v {
-                                    Some(v) => format!("{} := ({})", n, v),
-                                    None => String::from(n)
-                            }).join::<&str>(",\n\t")
+                                |(n, v)| format!("{}{}", n, v)).join::<&str>(",\n\t")
                         )
                     )?;
                 })
@@ -51,7 +101,7 @@ impl ToTokens for QueryResult {
 
                 tokens.append_all(quote! {
                     fmt.write_fmt(format_args!(
-                        "select {{\n{}\n}}",
+                        "{{\n{}\n}}",
                         [#(#mapping_tuples),*]
                             .iter()
                             .map(|(k, v)| format!("\t{k} := ({v}),"))
@@ -62,7 +112,7 @@ impl ToTokens for QueryResult {
             QueryResult::Tuple(vars) => {
                 tokens.append_all(quote! {
                     fmt.write_fmt(format_args!(
-                        "select ({})",
+                        "({})",
                         [#( #vars ),*]
                             .iter()
                             .map(|v| format!("({})", v))
