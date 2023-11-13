@@ -21,6 +21,25 @@ pub enum QueryVar {
     Call(Path, HashMap<String, QueryVar>),
 }
 
+#[derive(Debug)]
+pub enum QueryResult {
+    /// select fields from object. requires [select(object)]
+    Selector(String, Vec<(String, Option<QueryVar>)>),
+    /// default for named-structs: select fields from object. accepts [var(...)]
+    Object(Vec<(String, QueryVar)>),
+    /// todo: default for tuple-structs
+    Tuple(Vec<QueryVar>),
+    /// requires empty struct
+    Direct(QueryVar),
+}
+
+#[derive(Debug)]
+pub struct Query {
+    pub params: Params,
+    pub withs: Vec<With>,
+    pub result: QueryResult,
+}
+
 impl QueryVar {
     // pub fn is_simple_name_or_ref(&self) -> bool {
     //     self.as_simple_name_or_ref().is_some()
@@ -40,25 +59,6 @@ impl QueryVar {
 
         Some(s)
     }
-}
-
-#[derive(Debug)]
-pub enum QueryResult {
-    /// select fields from object. requires [select(object)]
-    Selector(String, Vec<QueryVar>),
-    /// default for named-structs: select fields from object. accepts [var(...)]
-    Object(Vec<(String, QueryVar)>),
-    /// todo: default for tuple-structs
-    Tuple(Vec<QueryVar>),
-    /// requires empty struct
-    Direct(QueryVar),
-}
-
-#[derive(Debug)]
-pub struct Query {
-    pub params: Params,
-    pub withs: Vec<With>,
-    pub result: QueryResult,
 }
 
 /// will be code that writes to fmt
@@ -124,15 +124,38 @@ impl ToTokens for With {
 impl ToTokens for QueryResult {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            QueryResult::Selector(fr, vals) => tokens.append_all(quote! {
-                fmt.write_fmt(
-                    format_args!(
-                        "select {} {{\n\t{}\n}}",
-                        #fr,
-                        [#( #vals ),*].join(", ")
-                    )
-                )?;
-            }),
+            QueryResult::Selector(fr, vals) => {
+                let (names, vars) = vals
+                    .iter()
+                    .map(|(n, v)| {
+                        // let v = v.as_ref().map(|v| v.to_token_stream()).unwrap_or_else(|| {
+                        //     quote! {
+                        //         <#n as ::edgedb_composable_query::ComposableQuerySelector>::FIELDS
+                        //     }
+                        // });
+
+                        // (n, v)
+                        match v {
+                            Some(v) => (n, quote! {::std::option::Option::Some(#v.to_string())}),
+                            None => (n, quote! {::std::option::Option::None::<String>}),
+                        }
+                    })
+                    .unzip::<_, _, Vec<_>, Vec<_>>();
+
+                tokens.append_all(quote! {
+                    fmt.write_fmt(
+                        format_args!(
+                            "select {} {{\n\t{}\n}}",
+                            #fr,
+                            [#( (#names, #vars) ),*].map(
+                                |(n, v)| match v {
+                                    Some(v) => format!("{} := ({})", n, v),
+                                    None => String::from(n)
+                            }).join::<&str>(",\n\t")
+                        )
+                    )?;
+                })
+            }
             QueryResult::Object(mapping) => {
                 let mapping_tuples = mapping.iter().map(|(k, v)| {
                     quote! {

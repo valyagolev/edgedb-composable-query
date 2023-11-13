@@ -1,10 +1,13 @@
 use edgedb_composable_query_derive::ComposableQuery;
 
 #[derive(ComposableQuery)]
-// #[select("select Inner limit 1")]
+#[select("select Inner limit 1")]
 struct Inner {
     opt: Option<String>,
     req: String,
+
+    #[var("len(.req)")]
+    strlen: i64,
 }
 
 #[derive(ComposableQuery)]
@@ -20,9 +23,9 @@ mod test {
 
     #[test]
     fn show_me() {
-        println!("{}\n\n", super::Inner::query());
+        println!("\n\n{}", super::Inner::query());
 
-        println!("{}", super::Outer::query());
+        println!("\n\n{}", super::Outer::query());
 
         // println!("{}", super::WrappedQuery::query());
     }

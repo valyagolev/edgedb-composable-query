@@ -21,11 +21,13 @@ struct ComposableQueryOpts {
 
 #[derive(Debug)]
 struct ComposableQueryReturn {
-    ident: Option<syn::Ident>,
+    // ident: Option<syn::Ident>,
+    field_name: Option<String>,
 
     #[allow(unused)]
     ty: Type,
-    var: QueryVar,
+
+    var: Option<QueryVar>,
 }
 
 impl FromField for ComposableQueryReturn {
@@ -50,9 +52,16 @@ impl FromField for ComposableQueryReturn {
             Ok(())
         })?;
 
-        let var = var.unwrap_or_else(|| QueryVar::Var(field.ident.clone().unwrap().to_string()));
+        // let var = var.unwrap_or_else(|| QueryVar::Var(field.ident.clone().unwrap().to_string()));
 
-        Ok(Self { ident, ty, var })
+        let field_name = field.ident.clone().map(|i| i.to_string());
+
+        Ok(Self {
+            field_name,
+            // ident,
+            ty,
+            var,
+        })
     }
 }
 
@@ -132,12 +141,40 @@ mod test {
                 // this is for `select { q := q, calc := calc }`
                 // #[var(q)]
                 id: String,
-                // #[var("calc")]
+                #[var("calc")]
                 calc: i32,
                 by_name: i32,
             }
 
         };
+
+        let formatted = on_one_quote(input);
+
+        insta::assert_snapshot!(formatted);
+    }
+
+    #[test]
+    fn insta_test_struct2() {
+        let input = quote! {
+
+        //             #[derive(ComposableQuery)]
+        // #[select("select Inner limit 1")]
+        // struct Inner {
+        //     opt: Option<String>,
+        //     req: String,
+
+        //     #[var("len(.req)")]
+        //     strlen: i64,
+        // }
+
+                    #[derive(ComposableQuery)]
+                    #[select("select Outer limit 1")]
+                    struct Outer {
+                        inner: Inner,
+                        other_field: String,
+                    }
+
+                };
 
         let formatted = on_one_quote(input);
 

@@ -17,6 +17,10 @@ impl AsEdgedbVar for String {
     const EDGEDB_TYPE: &'static str = "str";
 }
 
+pub trait ComposableQuerySelector {
+    const FIELDS: &'static [&'static str];
+}
+
 pub trait ComposableQuery {
     const ARG_NAMES: &'static [&'static str];
 

@@ -108,7 +108,7 @@ impl ComposableQueryAttribute {
                 }
             }
 
-            if fields.fields[0].ident.is_none() {
+            if fields.fields[0].field_name.is_none() {
                 todo!("tuple structs");
             }
 
@@ -119,7 +119,14 @@ impl ComposableQueryAttribute {
             if let Some(selector_from) = selector {
                 let vars_to_select = fields
                     .iter()
-                    .map(|f| QueryVar::Var(f.ident.as_ref().unwrap().to_string()))
+                    .map(|f| {
+                        (
+                            f.field_name
+                                .clone()
+                                .expect("We thought we have named fields here"),
+                            f.var.clone(),
+                        )
+                    })
                     .collect_vec();
 
                 if let Some(s) = selector_from.as_simple_name_or_ref() {
@@ -136,7 +143,14 @@ impl ComposableQueryAttribute {
             Ok(QueryResult::Object(
                 fields
                     .iter()
-                    .map(|f| (f.ident.as_ref().unwrap().to_string(), f.var.clone()))
+                    .map(|f| {
+                        let fname = f
+                            .field_name
+                            .as_ref()
+                            .cloned()
+                            .expect("We thought we have named fields here");
+                        (fname.clone(), f.var.clone().unwrap_or(QueryVar::Var(fname)))
+                    })
                     .collect_vec(),
             ))
         })();

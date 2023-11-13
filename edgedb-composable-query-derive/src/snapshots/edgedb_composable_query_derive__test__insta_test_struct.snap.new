@@ -1,6 +1,6 @@
 ---
 source: edgedb-composable-query-derive/src/lib.rs
-assertion_line: 144
+assertion_line: 153
 expression: formatted
 ---
 impl ::edgedb_composable_query::ComposableQuery for InsertQ {
@@ -36,7 +36,14 @@ impl ::edgedb_composable_query::ComposableQuery for InsertQ {
             format_args!("\t{} := ({}),\n", "_selector", "select Inner limit 1"),
         )?;
         fmt.write_fmt(
-            format_args!("select {} {{\n\t{}\n}}", "_selector", "id", "calc", "by_name"),
+            format_args!(
+                "select {} {{\n\t{}\n}}", "_selector", [("id",
+                ::std::option::Option::None:: < String >), ("calc",
+                ::std::option::Option::Some("calc")), ("by_name",
+                ::std::option::Option::None:: < String >)].map(| (n, v) | match v {
+                Some(v) => format!("{} := ({})", n, v), None => String::from(n) }).join::
+                < & str > (",\n\t")
+            ),
         )?;
         Ok(())
     }
