@@ -1,7 +1,7 @@
-use edgedb_composable_query_derive::ComposableQuery;
+use edgedb_composable_query_derive::{ComposableQuery, ComposableQuerySelector};
 use edgedb_protocol::model::Uuid;
 
-#[derive(ComposableQuery)]
+#[derive(ComposableQuerySelector)]
 struct Inner {
     id: Uuid,
     opt: Option<String>,
@@ -16,15 +16,25 @@ struct Inner {
 #[select("select Inner filter .id = id limit 1")]
 struct InnerById(Inner);
 
+#[derive(ComposableQuery)]
+#[params(req: String, opt: Option<String>)]
+#[select("insert Inner { req := req, opt := opt }")]
+struct Insert(Inner);
+
 #[cfg(test)]
 mod test {
-    use edgedb_composable_query::ComposableQuery;
+    use edgedb_composable_query::{ComposableQuery, ComposableQuerySelector};
 
     #[test]
     fn show_me() {
-        println!("\n\n{}", super::Inner::query());
+        let mut buf = String::new();
+        super::Inner::format_selector(&mut buf).unwrap();
+
+        println!("\n\n{}", buf);
 
         println!("\n\n{}", super::InnerById::query());
+
+        println!("\n\n{}", super::Insert::query());
 
         // println!("{}", super::WrappedQuery::query());
     }

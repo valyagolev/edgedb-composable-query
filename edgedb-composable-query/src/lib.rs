@@ -31,6 +31,10 @@ impl<T: AsEdgedbVar> ComposableQuerySelector for T {
     fn format_selector(_fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
         Ok(())
     }
+
+    fn format_subquery(_fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
+        Ok(())
+    }
 }
 
 pub enum ComposableQueryResultType {
@@ -60,8 +64,8 @@ pub trait ComposableQuerySelector {
 pub trait ComposableQuery: ComposableQuerySelector {
     const ARG_NAMES: &'static [&'static str];
 
-    type ARG_TYPES;
-    type RETURN_TYPE;
+    type ArgTypes;
+    type ReturnType;
 
     fn format_query(
         fmt: &mut impl std::fmt::Write,

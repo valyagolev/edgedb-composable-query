@@ -77,7 +77,7 @@ impl ToTokens for QuerySelector {
                             )
                         }
                         SelectorValue::Computed(v) => {
-                            (n, quote! {format!(":= ({})", #v.to_string())})
+                            (n, quote! {format!(" := ({})", #v.to_string())})
                         }
                     })
                     .unzip::<_, _, Vec<_>, Vec<_>>();

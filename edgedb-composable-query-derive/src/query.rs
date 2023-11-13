@@ -147,14 +147,14 @@ impl ToTokens for Query {
             QuerySelector::Selector(what, _) => quote! {format!("select ({})", #what)},
             QuerySelector::Object(_) => quote! {"select "},
             // QuerySelector::Tuple(_) => quote! {"select "},
-            QuerySelector::Direct(what, _ty) => quote! {format!("({})", #what)},
+            QuerySelector::Direct(what, _ty) => quote! {format!("select ({})", #what)},
         };
 
         tokens.append_all(quote! {
             const ARG_NAMES: &'static [&'static str] = &[#( #argnames ),*];
 
-            type ARG_TYPES = ( #( #argtypes ),* );
-            type RETURN_TYPE = Self;
+            type ArgTypes = ( #( #argtypes ),* );
+            type ReturnType = Self;
 
             fn format_query(
                 fmt: &mut impl ::std::fmt::Write,

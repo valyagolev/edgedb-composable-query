@@ -23,8 +23,36 @@ struct ComposableQueryOpts {
 }
 
 fn derive_composable_query_impl(item: DeriveInput) -> darling::Result<proc_macro2::TokenStream> {
+    let selector_impl = derive_composable_query_selector_impl(item.clone(), false)?;
+
     let item = ComposableQueryOpts::from_derive_input(&item)?;
     let attribs = ComposableQueryAttribute::from_attrs(&item.attrs)?;
+    let query = ComposableQueryAttribute::into_query(attribs, &item.data)?;
+    let selector = &query.result;
+    let ident = &item.ident;
+
+    Ok(quote! {
+        #selector_impl
+
+        impl ::edgedb_composable_query::ComposableQuery for #ident {
+            #query
+        }
+    })
+}
+
+fn derive_composable_query_selector_impl(
+    item: DeriveInput,
+    selector_only: bool,
+) -> darling::Result<proc_macro2::TokenStream> {
+    let item = ComposableQueryOpts::from_derive_input(&item)?;
+    let mut attribs = ComposableQueryAttribute::from_attrs(&item.attrs)?;
+
+    if selector_only {
+        attribs.push(ComposableQueryAttribute::Select(QueryVar::Var(
+            "".to_string(),
+        )));
+    }
+
     let query = ComposableQueryAttribute::into_query(attribs, &item.data)?;
     let selector = &query.result;
     let ident = &item.ident;
@@ -44,10 +72,6 @@ fn derive_composable_query_impl(item: DeriveInput) -> darling::Result<proc_macro
                 Ok(())
             }
         }
-
-        impl ::edgedb_composable_query::ComposableQuery for #ident {
-            #query
-        }
     })
 }
 
@@ -60,6 +84,15 @@ fn derive_composable_query_for_test(
     derive_composable_query_impl(item)
 }
 
+#[cfg(test)]
+fn derive_composable_query_selector_for_test(
+    item: proc_macro2::TokenStream,
+) -> darling::Result<proc_macro2::TokenStream> {
+    let item = syn::parse2::<DeriveInput>(item)?;
+
+    derive_composable_query_selector_impl(item, true)
+}
+
 #[proc_macro_derive(ComposableQuery, attributes(params, with, var, select, direct))]
 pub fn derive_composable_query(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let item = syn::parse_macro_input!(item as DeriveInput);
@@ -70,15 +103,39 @@ pub fn derive_composable_query(item: proc_macro::TokenStream) -> proc_macro::Tok
     }
 }
 
+#[proc_macro_derive(ComposableQuerySelector, attributes(params, with, var))]
+pub fn derive_composable_query_selector(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let item = syn::parse_macro_input!(item as DeriveInput);
+
+    match derive_composable_query_selector_impl(item, true) {
+        Ok(ts) => ts.into(),
+        Err(e) => e.write_errors().into(),
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use crate::derive_composable_query_for_test;
+    use crate::{derive_composable_query_for_test, derive_composable_query_selector_for_test};
     use proc_macro2::TokenStream;
     use quote::quote;
-    use syn::{parse::Parse, Type, TypePath};
 
     fn on_one_quote(input: TokenStream) -> String {
         let out = derive_composable_query_for_test(input).unwrap();
+
+        let s = out.to_string();
+        let as_file = match syn::parse_file(&s) {
+            Ok(f) => f,
+            Err(e) => {
+                println!("{}", s);
+                panic!("failed to parse output: {}", e);
+            }
+        };
+
+        prettyplease::unparse(&as_file)
+    }
+
+    fn on_one_quote_selector(input: TokenStream) -> String {
+        let out = derive_composable_query_selector_for_test(input).unwrap();
 
         let s = out.to_string();
         let as_file = match syn::parse_file(&s) {
@@ -121,38 +178,19 @@ mod test {
 
     #[test]
     fn insta_test_struct2() {
-        // let t = quote! {
-        //     Option<String>
-        // };
-
-        // dbg!(syn::parse2::<Type>(t).unwrap());
-        // let t = quote! {
-        //     Option::<String>
-        // };
-        // dbg!(syn::parse2::<Type>(t).unwrap());
-
-        // todo!();
         let input = quote! {
 
-        //             #[derive(ComposableQuery)]
-        // #[select("select Inner limit 1")]
-        // struct Inner {
-        //     opt: Option<String>,
-        //     req: String,
+            #[derive(ComposableQuery)]
+            struct Inner {
+                id: Uuid,
+                opt: Option<String>,
+                req: String,
 
-        //     #[var("len(.req)")]
-        //     strlen: i64,
-        // }
+                #[var("len(.req)")]
+                strlen: i64,
+            }
 
-                    #[derive(ComposableQuery)]
-                    #[select("select Outer limit 1")]
-                    struct Outer {
-                        inner: Inner,
-                        some_field: Option<String>,
-                        other_field: String,
-                    }
-
-                };
+        };
 
         let formatted = on_one_quote(input);
 
@@ -171,6 +209,27 @@ mod test {
         };
 
         let formatted = on_one_quote(input);
+
+        insta::assert_snapshot!(formatted);
+    }
+
+    #[test]
+    fn insta_test_struct_selector() {
+        let input = quote! {
+
+            #[derive(ComposableQuerySelector)]
+            struct Inner {
+                id: Uuid,
+                opt: Option<String>,
+                req: String,
+
+                #[var("len(.req)")]
+                strlen: i64,
+            }
+
+        };
+
+        let formatted = on_one_quote_selector(input);
 
         insta::assert_snapshot!(formatted);
     }
