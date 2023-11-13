@@ -2,13 +2,16 @@ use darling::ast::{self};
 
 use darling::{util, FromDeriveInput, FromField};
 
+use fields::ComposableQueryReturn;
 use query::QueryVar;
 use quote::quote;
 
 use syn::{DeriveInput, Type};
 use tokens::ComposableQueryAttribute;
 
+mod fields;
 mod query;
+mod selector;
 mod tokens;
 
 #[derive(Debug, FromDeriveInput)]
@@ -19,70 +22,27 @@ struct ComposableQueryOpts {
     data: ast::Data<util::Ignored, ComposableQueryReturn>,
 }
 
-#[derive(Debug)]
-struct ComposableQueryReturn {
-    // ident: Option<syn::Ident>,
-    field_name: Option<String>,
-
-    #[allow(unused)]
-    ty: Type,
-
-    var: Option<QueryVar>,
-}
-
-impl FromField for ComposableQueryReturn {
-    fn from_field(field: &syn::Field) -> darling::Result<Self> {
-        let ident = field.ident.clone();
-
-        let ty = field.ty.clone();
-
-        let mut var = None;
-
-        field.attrs.iter().try_for_each(|a| {
-            if a.path().is_ident("var") {
-                if var.is_none() {
-                    var = Some(a.parse_args::<QueryVar>()?);
-                } else {
-                    return Err(
-                        darling::Error::custom("expected only one var attribute").with_span(&a)
-                    );
-                }
-            }
-
-            Ok(())
-        })?;
-
-        // let var = var.unwrap_or_else(|| QueryVar::Var(field.ident.clone().unwrap().to_string()));
-
-        let field_name = field.ident.clone().map(|i| i.to_string());
-
-        Ok(Self {
-            field_name,
-            // ident,
-            ty,
-            var,
-        })
-    }
-}
-
 fn derive_composable_query_impl(item: DeriveInput) -> darling::Result<proc_macro2::TokenStream> {
     let item = ComposableQueryOpts::from_derive_input(&item)?;
-
     let attribs = ComposableQueryAttribute::from_attrs(&item.attrs)?;
-
     let query = ComposableQueryAttribute::into_query(attribs, &item.data)?;
-
+    let selector = &query.result;
     let ident = &item.ident;
-    // let (names, types) = query.params.unzip();
-    // let params = query.params;
 
     Ok(quote! {
+        impl ::edgedb_composable_query::ComposableQuerySelector for #ident {
+            fn format_selector(fmt: &mut impl ::std::fmt::Write) -> Result<(), std::fmt::Error> {
+                use ::edgedb_composable_query::itertools::Itertools;
+
+                #selector
+
+                Ok(())
+            }
+        }
 
         impl ::edgedb_composable_query::ComposableQuery for #ident {
             #query
         }
-
-
     })
 }
 

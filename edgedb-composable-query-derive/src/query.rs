@@ -6,6 +6,8 @@ use quote::quote;
 use quote::{ToTokens, TokenStreamExt};
 use syn::Path;
 
+use crate::selector::QueryResult;
+
 #[derive(Debug, Clone, Default)]
 pub struct Params(pub Vec<(String, syn::Type)>);
 
@@ -19,18 +21,6 @@ pub enum QueryVar {
     // SomeSubQuery(k=v, k2=v2)
     // => (with ... select ...)
     Call(Path, HashMap<String, QueryVar>),
-}
-
-#[derive(Debug)]
-pub enum QueryResult {
-    /// select fields from object. requires [select(object)]
-    Selector(String, Vec<(String, Option<QueryVar>)>),
-    /// default for named-structs: select fields from object. accepts [var(...)]
-    Object(Vec<(String, QueryVar)>),
-    /// todo: default for tuple-structs
-    Tuple(Vec<QueryVar>),
-    /// requires empty struct
-    Direct(QueryVar),
 }
 
 #[derive(Debug)]
@@ -120,72 +110,6 @@ impl ToTokens for With {
     }
 }
 
-/// will be code that writes to fmt
-impl ToTokens for QueryResult {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self {
-            QueryResult::Selector(fr, vals) => {
-                let (names, vars) = vals
-                    .iter()
-                    .map(|(n, v)| match v {
-                        Some(v) => (n, quote! {::std::option::Option::Some(#v.to_string())}),
-                        None => (n, quote! {::std::option::Option::None::<String>}),
-                    })
-                    .unzip::<_, _, Vec<_>, Vec<_>>();
-
-                tokens.append_all(quote! {
-                    fmt.write_fmt(
-                        format_args!(
-                            "select {} {{\n\t{}\n}}",
-                            #fr,
-                            [#( (#names, #vars) ),*].map(
-                                |(n, v)| match v {
-                                    Some(v) => format!("{} := ({})", n, v),
-                                    None => String::from(n)
-                            }).join::<&str>(",\n\t")
-                        )
-                    )?;
-                })
-            }
-            QueryResult::Object(mapping) => {
-                let mapping_tuples = mapping.iter().map(|(k, v)| {
-                    quote! {
-                        (#k, #v)
-                    }
-                });
-
-                tokens.append_all(quote! {
-                    fmt.write_fmt(format_args!(
-                        "select {{\n{}\n}}",
-                        [#(#mapping_tuples),*]
-                            .iter()
-                            .map(|(k, v)| format!("\t{k} := ({v}),"))
-                            .join("\n")
-                    ))?;
-                });
-            }
-            QueryResult::Tuple(vars) => {
-                tokens.append_all(quote! {
-                    fmt.write_fmt(format_args!(
-                        "select ({})",
-                        [#( #vars ),*]
-                            .iter()
-                            .map(|v| format!("({})", v))
-                            .join(", ")
-                    ))?;
-                });
-            }
-            QueryResult::Direct(direct) => {
-                tokens.append_all(quote! {
-                    fmt.write_str(
-                        #direct
-                    )?;
-                });
-            }
-        };
-    }
-}
-
 /// will be a function(fmt: &mut impl Write, args: &[&str])
 impl ToTokens for Query {
     fn to_tokens(&self, tokens: &mut TokenStream) {
@@ -203,7 +127,7 @@ impl ToTokens for Query {
             }
         }
 
-        self.result.to_tokens(&mut inner);
+        // self.result.to_tokens(&mut inner);
 
         let argnames = self.params.0.iter().map(|p| p.0.as_str()).collect_vec();
 
@@ -215,8 +139,11 @@ impl ToTokens for Query {
                 args: &::std::collections::HashMap<&str, String>
             ) -> Result<(), ::std::fmt::Error> {
                 use ::edgedb_composable_query::itertools::Itertools;
+                use ::edgedb_composable_query::ComposableQuerySelector;
 
                 #inner
+
+                Self::format_selector(fmt)?;
 
                 Ok(())
             }

@@ -10,7 +10,8 @@ use syn::{
 };
 
 use crate::{
-    query::{Params, Query, QueryResult, QueryVar, With},
+    query::{Params, Query, QueryVar, With},
+    selector::QueryResult,
     ComposableQueryOpts, ComposableQueryReturn,
 };
 use strum_macros::IntoStaticStr;
@@ -168,9 +169,9 @@ impl ComposableQueryAttribute {
         errors.finish()?;
 
         Ok(Query {
+            result,
             params,
             withs,
-            result,
         })
     }
 
