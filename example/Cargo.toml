@@ -8,3 +8,4 @@
 [dependencies]
     edgedb-composable-query-derive = { path = "../edgedb-composable-query-derive" }
     edgedb-composable-query        = { path = "../edgedb-composable-query" }
+    edgedb-protocol                = "0.6.0"

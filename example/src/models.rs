@@ -1,9 +1,11 @@
 use edgedb_composable_query_derive::ComposableQuery;
+use edgedb_protocol::model::Uuid;
 
 #[derive(ComposableQuery)]
 #[params(arg: i32)]
 #[select("select Inner limit 1")]
 struct Inner {
+    id: Uuid,
     opt: Option<String>,
     req: String,
 
@@ -17,6 +19,7 @@ struct Inner {
 #[derive(ComposableQuery)]
 #[select("select Outer limit 1")]
 struct Outer {
+    id: Uuid,
     inner: Inner,
     other_field: String,
 }

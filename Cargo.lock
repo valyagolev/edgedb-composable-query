@@ -140,6 +140,7 @@ version = "0.1.0"
 dependencies = [
  "edgedb-composable-query",
  "edgedb-composable-query-derive",
+ "edgedb-protocol",
 ]
 
 [[package]]

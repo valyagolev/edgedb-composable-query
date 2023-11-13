@@ -1,3 +1,4 @@
+use edgedb_protocol::model::Uuid;
 #[doc(hidden)]
 pub use itertools;
 
@@ -15,6 +16,9 @@ impl AsEdgedbVar for i32 {
 }
 impl AsEdgedbVar for String {
     const EDGEDB_TYPE: &'static str = "str";
+}
+impl AsEdgedbVar for Uuid {
+    const EDGEDB_TYPE: &'static str = "uuid";
 }
 
 impl<T: AsEdgedbVar> AsEdgedbVar for Option<T> {
