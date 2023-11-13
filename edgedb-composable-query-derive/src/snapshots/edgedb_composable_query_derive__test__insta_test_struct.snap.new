@@ -1,15 +1,37 @@
 ---
 source: edgedb-composable-query-derive/src/lib.rs
-assertion_line: 153
+assertion_line: 119
 expression: formatted
 ---
+impl ::edgedb_composable_query::ComposableQuerySelector for InsertQ {
+    const RESULT_TYPE: ::edgedb_composable_query::ComposableQueryResultType = ::edgedb_composable_query::ComposableQueryResultType::Selector;
+    fn format_selector(fmt: &mut impl ::std::fmt::Write) -> Result<(), std::fmt::Error> {
+        use ::edgedb_composable_query::itertools::Itertools;
+        fmt.write_fmt(
+            format_args!(
+                "{{\n\t{}\n}}", [("id", { let mut buf = String::new(); < String as
+                ::edgedb_composable_query::ComposableQuerySelector > ::format_subquery(&
+                mut buf) ?; ::edgedb_composable_query::query_add_indent(& buf) }),
+                ("calc", format!(":= ({})", "calc".to_string())), ("by_name", { let mut
+                buf = String::new(); < i32 as
+                ::edgedb_composable_query::ComposableQuerySelector > ::format_subquery(&
+                mut buf) ?; ::edgedb_composable_query::query_add_indent(& buf) })].map(|
+                (n, v) | format!("{}{}", n, v)).join:: < & str > (",\n\t")
+            ),
+        )?;
+        Ok(())
+    }
+}
 impl ::edgedb_composable_query::ComposableQuery for InsertQ {
     const ARG_NAMES: &'static [&'static str] = &["n", "v"];
+    type ARG_TYPES = (i32, String);
+    type RETURN_TYPE = Self;
     fn format_query(
         fmt: &mut impl ::std::fmt::Write,
         args: &::std::collections::HashMap<&str, String>,
     ) -> Result<(), ::std::fmt::Error> {
         use ::edgedb_composable_query::itertools::Itertools;
+        use ::edgedb_composable_query::ComposableQuerySelector;
         fmt.write_str("with\n")?;
         fmt.write_fmt(
             format_args!(
@@ -25,8 +47,8 @@ impl ::edgedb_composable_query::ComposableQuery for InsertQ {
         )?;
         fmt.write_fmt(
             format_args!(
-                "\t{} := ({}),\n", "q", { let args = [("v", format!("({})", "v")), ("n",
-                format!("({})", "a + 1"))].into(); let mut buf = String::new(); < crate
+                "\t{} := ({}),\n", "q", { let args = [("n", format!("({})", "a + 1")),
+                ("v", format!("({})", "v"))].into(); let mut buf = String::new(); < crate
                 ::InsertQ2 as ::edgedb_composable_query::ComposableQuery >
                 ::format_query(& mut buf, & args) ?;
                 ::edgedb_composable_query::query_add_indent(& buf) }
@@ -35,16 +57,8 @@ impl ::edgedb_composable_query::ComposableQuery for InsertQ {
         fmt.write_fmt(
             format_args!("\t{} := ({}),\n", "_selector", "select Inner limit 1"),
         )?;
-        fmt.write_fmt(
-            format_args!(
-                "select {} {{\n\t{}\n}}", "_selector", [("id",
-                ::std::option::Option::None:: < String >), ("calc",
-                ::std::option::Option::Some("calc")), ("by_name",
-                ::std::option::Option::None:: < String >)].map(| (n, v) | match v {
-                Some(v) => format!("{} := ({})", n, v), None => String::from(n) }).join::
-                < & str > (",\n\t")
-            ),
-        )?;
+        fmt.write_str(&format!("select ({})", "_selector"))?;
+        Self::format_selector(fmt)?;
         Ok(())
     }
 }

@@ -160,6 +160,22 @@ mod test {
     }
 
     #[test]
+    fn insta_test_struct_wrapper() {
+        let input = quote! {
+
+            #[derive(ComposableQuery)]
+            #[params(id: Uuid)]
+            #[select("select Inner filter .id = id limit 1")]
+            struct InnerById(Inner);
+
+        };
+
+        let formatted = on_one_quote(input);
+
+        insta::assert_snapshot!(formatted);
+    }
+
+    #[test]
     fn insta_test_empty_struct() {
         let input = quote! {
 

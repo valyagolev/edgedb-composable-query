@@ -6,7 +6,7 @@ use itertools::Itertools;
 use strum_macros::{EnumDiscriminants, EnumTryAs};
 use syn::{
     parse::Parse, punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Expr, FnArg,
-    LitStr, MetaList, Pat,
+    LitStr, MetaList, Pat, Type,
 };
 
 use crate::{
@@ -102,7 +102,12 @@ impl ComposableQueryAttribute {
 
             if fields.is_empty() {
                 match direct {
-                    Some(name) => return Ok(QuerySelector::Direct(QueryVar::Var(name.clone()))),
+                    Some(name) => {
+                        return Ok(QuerySelector::Direct(
+                            QueryVar::Var(name.clone()),
+                            syn::parse2::<Type>(quote::quote! { () }).unwrap(),
+                        ))
+                    }
                     _ => {
                         return Err("expected #[direct] attribute for empty structs");
                     }
@@ -110,7 +115,29 @@ impl ComposableQueryAttribute {
             }
 
             if fields.fields[0].field_name.is_none() {
-                todo!("tuple structs");
+                if fields.fields.len() != 1 {
+                    return Err("expected a single unnamed field (todo: tuples?)");
+                }
+
+                /*
+                (select something) (innertype_selector)
+                */
+
+                let selector = direct
+                    .map(|d| QueryVar::Var(d))
+                    .or(selector)
+                    .ok_or_else(|| {
+                        "expected #[select] or #[direct] attribute for wrapper structs"
+                    })?;
+
+                let name = "_selector".to_string();
+
+                withs.push(With(name.clone(), selector.clone()));
+
+                return Ok(QuerySelector::Direct(
+                    QueryVar::Var(name),
+                    fields.fields[0].ty.clone(),
+                ));
             }
 
             if direct.is_some() {

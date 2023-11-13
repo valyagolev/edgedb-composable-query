@@ -1,10 +1,11 @@
 use std::collections::HashMap;
+use std::default;
 
 use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::quote;
 use quote::{ToTokens, TokenStreamExt};
-use syn::{Path, Type};
+use syn::{Path, Token, Type};
 
 use crate::selector::QuerySelector;
 
@@ -142,10 +143,11 @@ impl ToTokens for Query {
             .cloned()
             .unzip::<_, _, Vec<String>, Vec<Type>>();
 
-        let fr = match &self.result {
+        let final_selector = match &self.result {
             QuerySelector::Selector(what, _) => quote! {format!("select ({})", #what)},
-            QuerySelector::Object(_) | QuerySelector::Tuple(_) => quote! {"select "},
-            QuerySelector::Direct(what) => what.to_token_stream(),
+            QuerySelector::Object(_) => quote! {"select "},
+            // QuerySelector::Tuple(_) => quote! {"select "},
+            QuerySelector::Direct(what, _ty) => quote! {format!("({})", #what)},
         };
 
         tokens.append_all(quote! {
@@ -153,7 +155,6 @@ impl ToTokens for Query {
 
             type ARG_TYPES = ( #( #argtypes ),* );
             type RETURN_TYPE = Self;
-
 
             fn format_query(
                 fmt: &mut impl ::std::fmt::Write,
@@ -164,7 +165,7 @@ impl ToTokens for Query {
 
                 #inner
 
-                fmt.write_str(&#fr)?;
+                fmt.write_str(&#final_selector)?;
 
                 Self::format_selector(fmt)?;
 

@@ -32,11 +32,11 @@ pub enum QuerySelector {
     Object(Vec<(String, QueryVar)>),
     /// todo: default for tuple-structs
     /// ?
-    Tuple(Vec<QueryVar>),
+    // Tuple(Vec<QueryVar>),
     /// requires empty struct
     /// as query return: `whatever`
     /// as subquery return:  `select outerobj {thisfield := (whatever)}`
-    Direct(QueryVar),
+    Direct(QueryVar, Type),
 }
 
 impl QuerySelector {
@@ -109,22 +109,24 @@ impl ToTokens for QuerySelector {
                     ))?;
                 });
             }
-            QuerySelector::Tuple(vars) => {
+            // QuerySelector::Tuple(vars) => {
+            //     tokens.append_all(quote! {
+            //         fmt.write_fmt(format_args!(
+            //             "({})",
+            //             [#( #vars ),*]
+            //                 .iter()
+            //                 .map(|v| format!("({})", v))
+            //                 .join(", ")
+            //         ))?;
+            //     });
+            // }
+            QuerySelector::Direct(direct, ty) => {
                 tokens.append_all(quote! {
-                    fmt.write_fmt(format_args!(
-                        "({})",
-                        [#( #vars ),*]
-                            .iter()
-                            .map(|v| format!("({})", v))
-                            .join(", ")
-                    ))?;
-                });
-            }
-            QuerySelector::Direct(direct) => {
-                tokens.append_all(quote! {
-                    fmt.write_str(
-                        #direct
-                    )?;
+                    // fmt.write_str(
+                    //     #direct
+                    // )?;
+
+                    <#ty as ::edgedb_composable_query::ComposableQuerySelector>::format_selector( fmt)?;
                 });
             }
         };

@@ -16,14 +16,6 @@ struct Inner {
 #[select("select Inner filter .id = id limit 1")]
 struct InnerById(Inner);
 
-// #[derive(ComposableQuery)]
-// #[select("select Outer limit 1")]
-// struct Outer {
-//     id: Uuid,
-//     inner: Inner,
-//     other_field: String,
-// }
-
 #[cfg(test)]
 mod test {
     use edgedb_composable_query::ComposableQuery;
@@ -32,7 +24,7 @@ mod test {
     fn show_me() {
         println!("\n\n{}", super::Inner::query());
 
-        println!("\n\n{}", super::Outer::query());
+        println!("\n\n{}", super::InnerById::query());
 
         // println!("{}", super::WrappedQuery::query());
     }
