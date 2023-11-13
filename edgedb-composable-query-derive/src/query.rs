@@ -125,11 +125,11 @@ impl ToTokens for QueryResult {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
             QueryResult::Selector(fr, vals) => tokens.append_all(quote! {
-                fmt.write_fmt!(
+                fmt.write_fmt(
                     format_args!(
                         "select {} {{\n\t{}\n}}",
                         #fr,
-                        #( #vals ),*
+                        [#( #vals ),*].join(", ")
                     )
                 )?;
             }),

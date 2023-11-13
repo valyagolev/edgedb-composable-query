@@ -12,7 +12,7 @@ mod query;
 mod tokens;
 
 #[derive(Debug, FromDeriveInput)]
-#[darling(forward_attrs(allow, doc, cfg, params, with, var))]
+#[darling(forward_attrs(allow, doc, cfg, params, with, var, select, direct))]
 struct ComposableQueryOpts {
     ident: syn::Ident,
     attrs: Vec<syn::Attribute>,
@@ -86,7 +86,7 @@ fn derive_composable_query_for_test(
     derive_composable_query_impl(item)
 }
 
-#[proc_macro_derive(ComposableQuery, attributes(params, with, var))]
+#[proc_macro_derive(ComposableQuery, attributes(params, with, var, select, direct))]
 pub fn derive_composable_query(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let item = syn::parse_macro_input!(item as DeriveInput);
 
@@ -127,6 +127,7 @@ mod test {
             // #[with(calc = "n + 2")]
             // #[with(q = "insert Q {n := calc, name := n}")]
             // #[with(calc2 = calc)]
+            #[select("select Inner limit 1")]
             struct InsertQ {
                 // this is for `select { q := q, calc := calc }`
                 // #[var(q)]

@@ -1,19 +1,21 @@
 use std::collections::HashMap;
 
-use darling::{ast, util, Error};
+use darling::{ast, error::Accumulator, util, Error};
 use itertools::Itertools;
 
+use strum_macros::{EnumDiscriminants, EnumTryAs};
 use syn::{
     parse::Parse, punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Expr, FnArg,
-    MetaList, Pat,
+    LitStr, MetaList, Pat,
 };
 
 use crate::{
     query::{Params, Query, QueryResult, QueryVar, With},
-    ComposableQueryReturn,
+    ComposableQueryOpts, ComposableQueryReturn,
 };
+use strum_macros::IntoStaticStr;
 
-#[derive(Debug)]
+#[derive(Debug, EnumTryAs, Clone)]
 pub enum ComposableQueryAttribute {
     Params(Params),
     With(With),
@@ -24,55 +26,67 @@ pub enum ComposableQueryAttribute {
 }
 
 impl ComposableQueryAttribute {
+    fn by_discr<'a, T>(
+        attrs: &'a Vec<Self>,
+        unwrapper: impl Fn(&'a Self) -> Option<T> + 'a,
+    ) -> impl Iterator<Item = T> + 'a {
+        attrs.into_iter().filter_map(unwrapper)
+    }
+
+    fn by_discr_at_most_one<'a, T>(
+        errors: &'a mut Accumulator,
+        attrs: &'a Vec<Self>,
+        unwrapper: impl Fn(&'a Self) -> Option<T> + 'a,
+        name: &'static str,
+    ) -> Option<T> {
+        let res = Self::by_discr(attrs, unwrapper).at_most_one();
+
+        match res {
+            Ok(Some(a)) => Some(a),
+            Ok(None) => None,
+            Err(e) => {
+                errors.push(Error::custom(format!(
+                    "expected at most one #[{name}] attribute",
+                )));
+                None
+            }
+        }
+    }
+
     pub fn into_query(
         attrs: Vec<Self>,
         fields: &ast::Data<util::Ignored, ComposableQueryReturn>,
     ) -> darling::Result<Query> {
         let mut errors = darling::Error::accumulator();
 
-        let params = match attrs
-            .iter()
-            .filter(|p| matches!(p, ComposableQueryAttribute::Params(_)))
-            .exactly_one()
-        {
-            Ok(ComposableQueryAttribute::Params(params)) => params.clone(),
-            _ => {
-                errors.push(Error::custom("expected exactly one #[params] attribute"));
+        let params = Self::by_discr_at_most_one(
+            &mut errors,
+            &attrs,
+            ComposableQueryAttribute::try_as_params_ref,
+            "params",
+        )
+        .cloned()
+        .unwrap_or_default();
 
-                Default::default()
-            }
-        };
-
-        let mut withs = attrs
-            .iter()
-            .filter_map(|p| match p {
-                ComposableQueryAttribute::With(w) => Some(w),
-                _ => None,
-            })
+        let mut withs = Self::by_discr(&attrs, ComposableQueryAttribute::try_as_with_ref)
             .cloned()
             .collect::<Vec<_>>();
 
-        let selector = attrs
-            .iter()
-            .filter(|p| matches!(p, ComposableQueryAttribute::Select(_)))
-            .at_most_one();
+        let selector = Self::by_discr_at_most_one(
+            &mut errors,
+            &attrs,
+            ComposableQueryAttribute::try_as_select_ref,
+            "select",
+        )
+        .cloned();
 
-        if selector.is_err() {
-            errors.push(Error::custom("expected at most one #[select] attribute"));
-        }
-
-        let selector = selector.unwrap_or_default();
-
-        let direct = attrs
-            .iter()
-            .filter(|p| matches!(p, ComposableQueryAttribute::Direct(_)))
-            .at_most_one();
-
-        if direct.is_err() {
-            errors.push(Error::custom("expected at most one #[direct] attribute"));
-        }
-
-        let direct = direct.unwrap_or_default();
+        let direct = Self::by_discr_at_most_one(
+            &mut errors,
+            &attrs,
+            ComposableQueryAttribute::try_as_direct_ref,
+            "direct",
+        )
+        .cloned();
 
         if direct.is_some() && selector.is_some() {
             errors.push(Error::custom(
@@ -87,9 +101,7 @@ impl ComposableQueryAttribute {
 
             if fields.is_empty() {
                 match direct {
-                    Some(ComposableQueryAttribute::Direct(name)) => {
-                        return Ok(QueryResult::Direct(QueryVar::Var(name.clone())))
-                    }
+                    Some(name) => return Ok(QueryResult::Direct(QueryVar::Var(name.clone()))),
                     _ => {
                         return Err("expected #[direct] attribute for empty structs");
                     }
@@ -104,7 +116,7 @@ impl ComposableQueryAttribute {
                 return Err("expected no #[direct] attribute for non-empty structs");
             }
 
-            if let Some(ComposableQueryAttribute::Select(selector_from)) = selector {
+            if let Some(selector_from) = selector {
                 let vars_to_select = fields
                     .iter()
                     .map(|f| QueryVar::Var(f.ident.as_ref().unwrap().to_string()))
@@ -192,8 +204,6 @@ impl ComposableQueryAttribute {
     fn parse_with(item: &MetaList) -> darling::Result<Self> {
         let mut with = None;
 
-        // dbg!(item);
-
         item.parse_nested_meta(|arg| {
             let name = arg.path.require_ident()?.to_string();
             let template = arg.value()?;
@@ -209,6 +219,14 @@ impl ComposableQueryAttribute {
         Ok(Self::With(with))
     }
 
+    fn parse_selector(kind: &str, item: &MetaList) -> darling::Result<Self> {
+        match kind {
+            "select" => Ok(Self::Select(item.parse_args::<QueryVar>()?)),
+            "direct" => Ok(Self::Direct(item.parse_args::<LitStr>()?.value())),
+            _ => unreachable!(),
+        }
+    }
+
     fn from_meta(item: &syn::Meta) -> darling::Result<Option<Self>> {
         let item = item.require_list()?;
         let ident = item.path.require_ident()?.to_string();
@@ -216,6 +234,7 @@ impl ComposableQueryAttribute {
         match &*ident {
             "params" => Self::parse_params(item).map(Some),
             "with" => Self::parse_with(item).map(Some),
+            "select" | "direct" => Self::parse_selector(&ident, item).map(Some),
             _ => Ok(None),
         }
     }

@@ -1,5 +1,6 @@
 use edgedb_composable_query_derive::ComposableQuery;
 
+mod models;
 mod test2;
 
 #[derive(ComposableQuery)]

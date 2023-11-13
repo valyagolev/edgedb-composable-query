@@ -16,6 +16,8 @@
     itertools   = "0.11.0"
     proc-macro2 = "1.0.69"
     quote       = "1"
+strum = "0.25.0"
+strum_macros = "0.25.3"
     syn         = { version = "2", features = ["printing"] }
 
 [dev-dependencies]
