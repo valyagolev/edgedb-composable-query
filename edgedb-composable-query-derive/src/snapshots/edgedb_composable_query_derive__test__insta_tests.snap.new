@@ -1,0 +1,33 @@
+---
+source: edgedb-composable-query-derive/src/lib.rs
+assertion_line: 139
+expression: formatted
+---
+impl ::edgedb_composable_query::ComposableQuery for InsertQ {
+    const ARG_COUNT: usize = 5usize;
+    fn format_query(
+        fmt: &mut impl ::std::fmt::Write,
+        args: &[String],
+    ) -> Result<(), ::std::fmt::Error> {
+        fmt.write_str("with\n")?;
+        fmt.write_fmt(
+            format_args!(
+                "\t{} := <{}>{},\n", "n", < i32 as ::edgedb_composable_query::AsEdgedbVar
+                > ::EDGEDB_TYPE, args[0usize]
+            ),
+        )?;
+        fmt.write_fmt(
+            format_args!(
+                "\t{} := <{}>{},\n", "v", < String as
+                ::edgedb_composable_query::AsEdgedbVar > ::EDGEDB_TYPE, args[1usize]
+            ),
+        )?;
+        fmt.write_fmt(format_args!("\t{} := ({}),\n", "calc", "n + 2"))?;
+        fmt.write_fmt(
+            format_args!("\t{} := ({}),\n", "q", "insert Q {n := calc, name := n}"),
+        )?;
+        fmt.write_fmt(format_args!("\t{} := ({}),\n", "calc2", "calc"))?;
+        Ok(())
+    }
+}
+

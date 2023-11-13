@@ -1,0 +1,7 @@
+{
+  "rust-analyzer.showUnlinkedFileNotification": false,
+  "files.associations": {
+    "*.snap": "rust",
+    "*.snap.new": "rust"
+  }
+}

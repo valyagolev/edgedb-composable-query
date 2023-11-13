@@ -1,0 +1,18 @@
+---
+source: edgedb-composable-query-derive/src/lib.rs
+assertion_line: 148
+expression: formatted
+---
+fn query_gen(mut arg_n: usize, suffix: &str) -> String {
+    let withs = vec![];
+    {
+        withs.push((n, format!("${arg_n}")));
+    }
+    {
+        withs.push((v, format!("${arg_n}")));
+    }
+}
+fn my_query(n: i32, v: String) -> (String, InsertQ) {
+    todo!()
+}
+

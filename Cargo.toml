@@ -1,0 +1,7 @@
+[workspace]
+    resolver = "2"
+    members = [
+        "edgedb-composable-query",
+        "edgedb-composable-query-derive",
+        "example",
+    ]
