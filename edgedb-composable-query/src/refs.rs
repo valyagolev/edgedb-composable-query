@@ -1,4 +1,4 @@
-use edgedb_protocol::model::Uuid;
+use edgedb_protocol::{model::Uuid, value::Value};
 use itertools::Itertools;
 
 use crate::{prim::EdgedbPrim, value::EdgedbValue, EdgedbObject};
@@ -10,6 +10,8 @@ pub struct Ref<T: EdgedbObject> {
 }
 
 impl<T: EdgedbObject> EdgedbValue for Ref<T> {
+    type NativeArgType = Value;
+
     fn from_edgedb_value(value: edgedb_protocol::value::Value) -> anyhow::Result<Self> {
         match value {
             edgedb_protocol::value::Value::Object { shape, mut fields } => {
@@ -103,8 +105,8 @@ mod test {
     async fn some_queries() -> anyhow::Result<()> {
         let conn = edgedb_tokio::create_client().await?;
 
-        dbg!(query::<Vec<Ref<Inner>>>(&conn, "select Inner;").await?);
-        dbg!(query::<Vec<Ref<Inner>>>(&conn, "select Inner {id, opt, req};").await?);
+        // dbg!(query::<Vec<Ref<Inner>>>(&conn, "select Inner;").await?);
+        // dbg!(query::<Vec<Ref<Inner>>>(&conn, "select Inner {id, opt, req};").await?);
 
         Ok(())
     }

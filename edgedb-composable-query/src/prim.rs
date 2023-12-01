@@ -26,6 +26,8 @@ macro_rules! impl_prim {
             }
 
             impl EdgedbValue for $t {
+                type NativeArgType = $t;
+
                 fn from_edgedb_value(value: Value) -> Result<Self> {
                     <$t>::from_edgedb_val(value)
                 }

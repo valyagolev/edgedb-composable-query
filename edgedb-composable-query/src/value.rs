@@ -7,6 +7,9 @@ pub use nonempty::{nonempty, NonEmpty};
 use edgedb_protocol::{codec::ObjectShape, query_arg::QueryArgs, value::Value};
 
 pub trait EdgedbValue: Sized {
+    /// use Value by default
+    type NativeArgType;
+
     fn from_edgedb_value(value: Value) -> Result<Self>;
     fn to_edgedb_value(self) -> Result<Value>;
 }
@@ -19,10 +22,12 @@ pub trait EdgedbSetValue: Sized {
 
     fn interpret_possibly_missing_required_value(val: Option<Self>) -> Result<Self>;
 
-    async fn query_direct(client: &Client, q: &str) -> Result<Self>;
+    async fn query_direct<Args: EdgedbValue>(client: &Client, q: &str, args: Args) -> Result<Self>;
 }
 
 impl<T: EdgedbObject> EdgedbValue for T {
+    type NativeArgType = Value;
+
     fn from_edgedb_value(value: Value) -> Result<Self> {
         let (shape, fields) = match value {
             Value::Object { shape, fields } => (shape, fields),
@@ -41,8 +46,10 @@ impl<T: EdgedbValue> EdgedbSetValue for T {
     const EXPECTED_CARDINALITY: edgedb_protocol::server_message::Cardinality =
         edgedb_protocol::server_message::Cardinality::One;
 
-    async fn query_direct(client: &Client, q: &str) -> Result<Self> {
-        let val = client.query_required_single::<Value, _>(q, &()).await?;
+    async fn query_direct<Args: EdgedbValue>(client: &Client, q: &str, args: Args) -> Result<Self> {
+        let val = client
+            .query_required_single::<Value, Value>(q, &args.to_edgedb_value()?)
+            .await?;
         let val = Self::from_edgedb_value(val)?;
         Ok(val)
     }
@@ -67,8 +74,10 @@ impl<T: EdgedbValue> EdgedbSetValue for Option<T> {
     const EXPECTED_CARDINALITY: edgedb_protocol::server_message::Cardinality =
         edgedb_protocol::server_message::Cardinality::AtMostOne;
 
-    async fn query_direct(client: &Client, q: &str) -> Result<Self> {
-        let val = client.query_single::<Value, _>(q, &()).await?;
+    async fn query_direct<Args: EdgedbValue>(client: &Client, q: &str, args: Args) -> Result<Self> {
+        let val = client
+            .query_single::<Value, Value>(q, &args.to_edgedb_value()?)
+            .await?;
         let val = val.map(|val| T::from_edgedb_value(val)).transpose()?;
         Ok(val)
     }
@@ -125,8 +134,10 @@ impl<T: EdgedbValue> EdgedbSetValue for Vec<T> {
         Ok(Value::Set(vs))
     }
 
-    async fn query_direct(client: &Client, q: &str) -> Result<Self> {
-        let val = client.query::<Value, _>(q, &()).await?;
+    async fn query_direct<Args: EdgedbValue>(client: &Client, q: &str, args: Args) -> Result<Self> {
+        let val = client
+            .query::<Value, _>(q, &args.to_edgedb_value()?)
+            .await?;
 
         dbg!(&val);
 
@@ -179,8 +190,10 @@ impl<T: EdgedbValue> EdgedbSetValue for NonEmpty<T> {
         Ok(Value::Set(vs))
     }
 
-    async fn query_direct(client: &Client, q: &str) -> Result<Self> {
-        let val = client.query::<Value, _>(q, &()).await?;
+    async fn query_direct<Args: EdgedbValue>(client: &Client, q: &str, args: Args) -> Result<Self> {
+        let val = client
+            .query::<Value, _>(q, &args.to_edgedb_value()?)
+            .await?;
         let val = val
             .into_iter()
             .map(|val| T::from_edgedb_value(val))

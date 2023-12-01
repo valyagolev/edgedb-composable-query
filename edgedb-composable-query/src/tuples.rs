@@ -1,15 +1,33 @@
 use edgedb_protocol::value::Value;
 
-use crate::value::EdgedbSetValue;
+use crate::value::{EdgedbSetValue, EdgedbValue};
+
+impl EdgedbValue for () {
+    type NativeArgType = ();
+
+    fn from_edgedb_value(value: Value) -> anyhow::Result<Self> {
+        if let Value::Nothing = value {
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!("expected nothing"))
+        }
+    }
+
+    fn to_edgedb_value(self) -> anyhow::Result<Value> {
+        Ok(Value::Nothing)
+    }
+}
 
 macro_rules! impl_tuple {
     ( $count:expr, ($($name:ident,)+), ($($small_name:ident,)+) ) => (
 
-        impl<$($name:EdgedbSetValue),+> EdgedbSetValue for ($($name,)+) {
-            const EXPECTED_CARDINALITY: edgedb_protocol::server_message::Cardinality =
-                edgedb_protocol::server_message::Cardinality::One;
+        impl<$($name:EdgedbValue),+> EdgedbValue for ($($name,)+) {
+            // const EXPECTED_CARDINALITY: edgedb_protocol::server_message::Cardinality =
+            //     edgedb_protocol::server_message::Cardinality::One;
 
-            fn from_edgedb_set_value(value: edgedb_protocol::value::Value) -> anyhow::Result<Self> {
+            type NativeArgType = ($(<$name as EdgedbValue>::NativeArgType),+);
+
+            fn from_edgedb_value(value: edgedb_protocol::value::Value) -> anyhow::Result<Self> {
                 if let Value::Tuple(mut v) = value {
                     if v.len() != $count {
                         return Err(anyhow::anyhow!(
@@ -25,27 +43,72 @@ macro_rules! impl_tuple {
                 }
             }
 
-            fn to_edgedb_set_value(self) -> anyhow::Result<edgedb_protocol::value::Value> {
+            fn to_edgedb_value(self) -> anyhow::Result<edgedb_protocol::value::Value> {
                 let ($($small_name,)+) = self;
                 Ok(Value::Tuple(vec![$($small_name.to_edgedb_set_value()?),+]))
             }
 
-            fn interpret_possibly_missing_required_value(val: Option<Self>) -> anyhow::Result<Self> {
-                match val {
-                    Some(val) => Ok(val),
-                    None => Err(anyhow::anyhow!("expected single value")),
-                }
-            }
+            // fn interpret_possibly_missing_required_value(val: Option<Self>) -> anyhow::Result<Self> {
+            //     match val {
+            //         Some(val) => Ok(val),
+            //         None => Err(anyhow::anyhow!("expected single value")),
+            //     }
+            // }
 
-            async fn query_direct(client: &edgedb_tokio::Client, q: &str) -> anyhow::Result<Self> {
-                let val = client.query_required_single::<Value, _>(q, &()).await?;
-                let val = Self::from_edgedb_set_value(val)?;
-                Ok(val)
-            }
+            // async fn query_direct(client: &edgedb_tokio::Client, q: &str) -> anyhow::Result<Self> {
+            //     let val = client.query_required_single::<Value, _>(q, &()).await?;
+            //     let val = Self::from_edgedb_set_value(val)?;
+            //     Ok(val)
+            // }
         }
 
     )
 }
+
+// macro_rules! impl_tuple {
+//     ( $count:expr, ($($name:ident,)+), ($($small_name:ident,)+) ) => (
+
+//         impl<$($name:EdgedbSetValue),+> EdgedbSetValue for ($($name,)+) {
+//             const EXPECTED_CARDINALITY: edgedb_protocol::server_message::Cardinality =
+//                 edgedb_protocol::server_message::Cardinality::One;
+
+//             fn from_edgedb_set_value(value: edgedb_protocol::value::Value) -> anyhow::Result<Self> {
+//                 if let Value::Tuple(mut v) = value {
+//                     if v.len() != $count {
+//                         return Err(anyhow::anyhow!(
+//                             "expected tuple of length {}, got {}",
+//                             $count,
+//                             v.len()
+//                         ));
+//                     }
+
+//                     Ok(($($name::from_edgedb_set_value(v.pop().unwrap())?,)+))
+//                 } else {
+//                     Err(anyhow::anyhow!("expected tuple"))
+//                 }
+//             }
+
+//             fn to_edgedb_set_value(self) -> anyhow::Result<edgedb_protocol::value::Value> {
+//                 let ($($small_name,)+) = self;
+//                 Ok(Value::Tuple(vec![$($small_name.to_edgedb_set_value()?),+]))
+//             }
+
+//             fn interpret_possibly_missing_required_value(val: Option<Self>) -> anyhow::Result<Self> {
+//                 match val {
+//                     Some(val) => Ok(val),
+//                     None => Err(anyhow::anyhow!("expected single value")),
+//                 }
+//             }
+
+//             async fn query_direct<Args: EdgedbValue>(client: &edgedb_tokio::Client, q: &str, args: Args) -> anyhow::Result<Self> {
+//                 let val = client.query_required_single::<Value, _>(q, &()).await?;
+//                 let val = Self::from_edgedb_set_value(val)?;
+//                 Ok(val)
+//             }
+//         }
+
+//     )
+// }
 
 impl_tuple! {1, (T0,), (t0,)}
 impl_tuple! {2, (T0, T1,), (t0, t1,)}
@@ -116,12 +179,13 @@ mod test {
         let conn = edgedb_tokio::create_client().await?;
 
         dbg!(
-            query::<(Ref<Inner>, Ref<Inner>)>(
+            query::<(Ref<Inner>, Ref<Inner>), ()>(
                 &conn,
                 "
             with a := (select Inner {id, opt, req} limit 1),
             select (a, a)
-            "
+            ",
+                ()
             )
             .await?
         );
