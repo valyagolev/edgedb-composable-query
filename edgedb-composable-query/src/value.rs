@@ -22,11 +22,11 @@ pub trait EdgedbSetValue: Sized {
 
     fn interpret_possibly_missing_required_value(val: Option<Self>) -> Result<Self>;
 
-    async fn query_direct<Args: EdgedbQueryArgs>(
+    fn query_direct<Args: EdgedbQueryArgs + Send>(
         client: &Client,
         q: &str,
         args: Args,
-    ) -> Result<Self>;
+    ) -> impl std::future::Future<Output = Result<Self>> + Send;
 }
 
 impl<T: EdgedbObject> EdgedbValue for T {
@@ -50,16 +50,18 @@ impl<T: EdgedbValue> EdgedbSetValue for T {
     const EXPECTED_CARDINALITY: edgedb_protocol::server_message::Cardinality =
         edgedb_protocol::server_message::Cardinality::One;
 
-    async fn query_direct<Args: EdgedbQueryArgs>(
+    fn query_direct<Args: EdgedbQueryArgs + Send>(
         client: &Client,
         q: &str,
         args: Args,
-    ) -> Result<Self> {
-        let val = client
-            .query_required_single::<Value, _>(q, &args.as_query_args()?)
-            .await?;
-        let val = Self::from_edgedb_value(val)?;
-        Ok(val)
+    ) -> impl std::future::Future<Output = Result<Self>> + Send {
+        async {
+            let val = client
+                .query_required_single::<Value, _>(q, &args.as_query_args()?)
+                .await?;
+            let val = Self::from_edgedb_value(val)?;
+            Ok(val)
+        }
     }
 
     fn from_edgedb_set_value(value: Value) -> Result<Self> {
@@ -82,16 +84,18 @@ impl<T: EdgedbValue> EdgedbSetValue for Option<T> {
     const EXPECTED_CARDINALITY: edgedb_protocol::server_message::Cardinality =
         edgedb_protocol::server_message::Cardinality::AtMostOne;
 
-    async fn query_direct<Args: EdgedbQueryArgs>(
+    fn query_direct<Args: EdgedbQueryArgs + Send>(
         client: &Client,
         q: &str,
         args: Args,
-    ) -> Result<Self> {
-        let val = client
-            .query_single::<Value, _>(q, &args.as_query_args()?)
-            .await?;
-        let val = val.map(|val| T::from_edgedb_value(val)).transpose()?;
-        Ok(val)
+    ) -> impl std::future::Future<Output = Result<Self>> + Send {
+        async {
+            let val = client
+                .query_single::<Value, _>(q, &args.as_query_args()?)
+                .await?;
+            let val = val.map(|val| T::from_edgedb_value(val)).transpose()?;
+            Ok(val)
+        }
     }
 
     fn from_edgedb_set_value(value: Value) -> Result<Self> {
@@ -146,21 +150,23 @@ impl<T: EdgedbValue> EdgedbSetValue for Vec<T> {
         Ok(Value::Set(vs))
     }
 
-    async fn query_direct<Args: EdgedbQueryArgs>(
+    fn query_direct<Args: EdgedbQueryArgs + Send>(
         client: &Client,
         q: &str,
         args: Args,
-    ) -> Result<Self> {
-        let val = client.query::<Value, _>(q, &args.as_query_args()?).await?;
+    ) -> impl std::future::Future<Output = Result<Self>> + Send {
+        async {
+            let val = client.query::<Value, _>(q, &args.as_query_args()?).await?;
 
-        dbg!(&val);
+            dbg!(&val);
 
-        let val = val
-            .into_iter()
-            .map(|val| T::from_edgedb_value(val))
-            .collect::<Result<_>>()?;
+            let val = val
+                .into_iter()
+                .map(|val| T::from_edgedb_value(val))
+                .collect::<Result<_>>()?;
 
-        Ok(val)
+            Ok(val)
+        }
     }
 
     fn interpret_possibly_missing_required_value(val: Option<Self>) -> Result<Self> {
@@ -204,17 +210,19 @@ impl<T: EdgedbValue> EdgedbSetValue for NonEmpty<T> {
         Ok(Value::Set(vs))
     }
 
-    async fn query_direct<Args: EdgedbQueryArgs>(
+    fn query_direct<Args: EdgedbQueryArgs + Send>(
         client: &Client,
         q: &str,
         args: Args,
-    ) -> Result<Self> {
-        let val = client.query::<Value, _>(q, &args.as_query_args()?).await?;
-        let val = val
-            .into_iter()
-            .map(|val| T::from_edgedb_value(val))
-            .collect::<Result<_>>()?;
-        NonEmpty::from_vec(val).ok_or_else(|| anyhow::anyhow!("expected non-empty set"))
+    ) -> impl std::future::Future<Output = Result<Self>> + Send {
+        async {
+            let val = client.query::<Value, _>(q, &args.as_query_args()?).await?;
+            let val = val
+                .into_iter()
+                .map(|val| T::from_edgedb_value(val))
+                .collect::<Result<_>>()?;
+            NonEmpty::from_vec(val).ok_or_else(|| anyhow::anyhow!("expected non-empty set"))
+        }
     }
 
     fn interpret_possibly_missing_required_value(val: Option<Self>) -> Result<Self> {
