@@ -100,7 +100,7 @@ macro_rules! impl_tuple {
 //                 }
 //             }
 
-//             async fn query_direct<Args: EdgedbValue>(client: &edgedb_tokio::Client, q: &str, args: Args) -> anyhow::Result<Self> {
+//             async fn query_direct<Args: EdgedbQueryArgs>(client: &edgedb_tokio::Client, q: &str, args: Args) -> anyhow::Result<Self> {
 //                 let val = client.query_required_single::<Value, _>(q, &()).await?;
 //                 let val = Self::from_edgedb_set_value(val)?;
 //                 Ok(val)

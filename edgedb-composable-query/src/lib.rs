@@ -1,6 +1,7 @@
 /// todo: local Result type
 pub use anyhow::Result;
 
+use args::EdgedbQueryArgs;
 use edgedb_tokio::Client;
 pub use nonempty::{nonempty, NonEmpty};
 
@@ -19,7 +20,7 @@ pub trait EdgedbObject: Sized {
     fn to_edgedb_object(&self) -> Result<(ObjectShape, Vec<Option<Value>>)>;
 }
 
-pub async fn query<T: EdgedbSetValue, Args: EdgedbValue>(
+pub async fn query<T: EdgedbSetValue, Args: EdgedbQueryArgs>(
     client: &Client,
     q: &str,
     args: Args,

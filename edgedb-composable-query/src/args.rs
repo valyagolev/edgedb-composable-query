@@ -1,8 +1,10 @@
 use crate::EdgedbValue;
 use crate::{EdgedbObject, Result};
+use edgedb_protocol::query_arg::QueryArgs;
+use edgedb_protocol::value::Value;
 
 pub trait EdgedbQueryArgs {
-    type EdgedbArgsType;
+    type EdgedbArgsType: QueryArgs;
 
     fn as_query_args(self) -> Result<Self::EdgedbArgsType>;
 }
@@ -15,16 +17,22 @@ impl EdgedbQueryArgs for () {
     }
 }
 
+macro_rules! ignore_first {
+    ($a:ident, $b:ident) => {
+        $b
+    };
+}
+
 macro_rules! impl_tuple {
     ( $count:expr, ($($name:ident,)+), ($($small_name:ident,)+) ) => (
 
         impl<$($name:EdgedbValue),+> EdgedbQueryArgs for ($($name,)+) {
-            type EdgedbArgsType = ($(<$name as EdgedbValue>::NativeArgType),+);
+            type EdgedbArgsType = ($(ignore_first!($name, Value),)+);
 
             fn as_query_args(self) -> Result<Self::EdgedbArgsType> {
                 let ($($small_name,)+) = self;
 
-                Ok(&($($small_name.to_edgedb_value()?,)+))
+                Ok(($($small_name.to_edgedb_value()?,)+))
             }
         }
 
@@ -108,7 +116,7 @@ mod test {
             )
             .await?,
             ExamplImplStruct {
-                a: "aaa".to_string(),
+                a: "hi".to_string(),
                 b: None
             }
         );
