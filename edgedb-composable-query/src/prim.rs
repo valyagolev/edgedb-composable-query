@@ -1,7 +1,10 @@
 use crate::value::EdgedbValue;
 use crate::Result;
-use edgedb_protocol::model::Uuid;
-use edgedb_protocol::value::Value;
+use edgedb_protocol::model::{Json, Uuid};
+use edgedb_protocol::value::{self, Value};
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
+use serde_json::to_string;
 
 pub trait EdgedbPrim: Sized {
     fn from_edgedb_val(value: Value) -> Result<Self>;
@@ -32,9 +35,9 @@ macro_rules! impl_prim {
                     <$t>::from_edgedb_val(value)
                 }
 
-                fn to_edgedb_value(self) -> Result<Value> {
-                    <$t>::to_edgedb_val(self)
-                }
+                // fn to_edgedb_value(self) -> Result<Value> {
+                //     <$t>::to_edgedb_val(self)
+                // }
             }
         )*
     };
@@ -52,4 +55,21 @@ impl_prim! {
     bool => Bool,
     String => Str,
     Uuid => Uuid
+}
+
+pub struct EdgedbJson<T: DeserializeOwned + Serialize>(pub T);
+
+impl<T: DeserializeOwned + Serialize> EdgedbPrim for EdgedbJson<T> {
+    fn from_edgedb_val(value: Value) -> Result<Self> {
+        if let Value::Json(s) = value {
+            Ok(Self(serde_json::from_str(&s)?))
+        } else {
+            Err(anyhow::anyhow!("expected: {:?}", value))
+        }
+    }
+
+    fn to_edgedb_val(self) -> Result<Value> {
+        let val = to_string(&self.0)?;
+        Ok(Value::Json(unsafe { Json::new_unchecked(val) }))
+    }
 }

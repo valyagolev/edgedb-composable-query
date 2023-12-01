@@ -39,9 +39,9 @@ impl<T: EdgedbObject> EdgedbValue for Ref<T> {
         }
     }
 
-    fn to_edgedb_value(self) -> anyhow::Result<edgedb_protocol::value::Value> {
-        todo!()
-    }
+    // fn to_edgedb_value(self) -> anyhow::Result<edgedb_protocol::value::Value> {
+    //     todo!()
+    // }
 }
 
 #[cfg(test)]
@@ -86,14 +86,14 @@ mod test {
             })
         }
 
-        fn to_edgedb_object(
-            &self,
-        ) -> anyhow::Result<(
-            edgedb_protocol::codec::ObjectShape,
-            Vec<Option<edgedb_protocol::value::Value>>,
-        )> {
-            todo!()
-        }
+        // fn to_edgedb_object(
+        //     &self,
+        // ) -> anyhow::Result<(
+        //     edgedb_protocol::codec::ObjectShape,
+        //     Vec<Option<edgedb_protocol::value::Value>>,
+        // )> {
+        //     todo!()
+        // }
     }
 
     #[tokio::test]

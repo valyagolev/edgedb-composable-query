@@ -17,7 +17,7 @@ use value::EdgedbValue;
 
 pub trait EdgedbObject: Sized {
     fn from_edgedb_object(shape: ObjectShape, fields: Vec<Option<Value>>) -> Result<Self>;
-    fn to_edgedb_object(&self) -> Result<(ObjectShape, Vec<Option<Value>>)>;
+    // fn to_edgedb_object(&self) -> Result<(ObjectShape, Vec<Option<Value>>)>;
 }
 
 pub async fn query<T: EdgedbSetValue, Args: EdgedbQueryArgs + Send>(
@@ -71,14 +71,14 @@ mod test {
             })
         }
 
-        fn to_edgedb_object(
-            &self,
-        ) -> anyhow::Result<(
-            edgedb_protocol::codec::ObjectShape,
-            Vec<Option<edgedb_protocol::value::Value>>,
-        )> {
-            todo!()
-        }
+        // fn to_edgedb_object(
+        //     &self,
+        // ) -> anyhow::Result<(
+        //     edgedb_protocol::codec::ObjectShape,
+        //     Vec<Option<edgedb_protocol::value::Value>>,
+        // )> {
+        //     todo!()
+        // }
     }
 
     #[tokio::test]

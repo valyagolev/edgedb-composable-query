@@ -13,9 +13,9 @@ impl EdgedbValue for () {
         }
     }
 
-    fn to_edgedb_value(self) -> anyhow::Result<Value> {
-        Ok(Value::Nothing)
-    }
+    // fn to_edgedb_value(self) -> anyhow::Result<Value> {
+    //     Ok(Value::Nothing)
+    // }
 }
 
 macro_rules! impl_tuple {
@@ -44,10 +44,10 @@ macro_rules! impl_tuple {
                 }
             }
 
-            fn to_edgedb_value(self) -> anyhow::Result<edgedb_protocol::value::Value> {
-                let ($($small_name,)+) = self;
-                Ok(Value::Tuple(vec![$($small_name.to_edgedb_set_value()?),+]))
-            }
+            // fn to_edgedb_value(self) -> anyhow::Result<edgedb_protocol::value::Value> {
+            //     let ($($small_name,)+) = self;
+            //     Ok(Value::Tuple(vec![$($small_name.to_edgedb_set_value()?),+]))
+            // }
 
             // fn interpret_possibly_missing_required_value(val: Option<Self>) -> anyhow::Result<Self> {
             //     match val {
@@ -160,14 +160,14 @@ mod test {
             })
         }
 
-        fn to_edgedb_object(
-            &self,
-        ) -> anyhow::Result<(
-            edgedb_protocol::codec::ObjectShape,
-            Vec<Option<edgedb_protocol::value::Value>>,
-        )> {
-            todo!()
-        }
+        // fn to_edgedb_object(
+        //     &self,
+        // ) -> anyhow::Result<(
+        //     edgedb_protocol::codec::ObjectShape,
+        //     Vec<Option<edgedb_protocol::value::Value>>,
+        // )> {
+        //     todo!()
+        // }
     }
 
     #[tokio::test]

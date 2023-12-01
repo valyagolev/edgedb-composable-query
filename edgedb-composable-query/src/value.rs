@@ -11,14 +11,14 @@ pub trait EdgedbValue: Sized {
     type NativeArgType;
 
     fn from_edgedb_value(value: Value) -> Result<Self>;
-    fn to_edgedb_value(self) -> Result<Value>;
+    // fn to_edgedb_value(self) -> Result<Value>;
 }
 
 pub trait EdgedbSetValue: Sized {
     const EXPECTED_CARDINALITY: edgedb_protocol::server_message::Cardinality;
 
     fn from_edgedb_set_value(value: Value) -> Result<Self>;
-    fn to_edgedb_set_value(self) -> Result<Value>;
+    // fn to_edgedb_set_value(self) -> Result<Value>;
 
     fn interpret_possibly_missing_required_value(val: Option<Self>) -> Result<Self>;
 
@@ -40,10 +40,10 @@ impl<T: EdgedbObject> EdgedbValue for T {
         Self::from_edgedb_object(shape, fields)
     }
 
-    fn to_edgedb_value(self) -> Result<Value> {
-        let (shape, fields) = self.to_edgedb_object()?;
-        Ok(Value::Object { shape, fields })
-    }
+    // fn to_edgedb_value(self) -> Result<Value> {
+    //     let (shape, fields) = self.to_edgedb_object()?;
+    //     Ok(Value::Object { shape, fields })
+    // }
 }
 
 impl<T: EdgedbValue> EdgedbSetValue for T {
@@ -66,9 +66,9 @@ impl<T: EdgedbValue> EdgedbSetValue for T {
         T::from_edgedb_value(value)
     }
 
-    fn to_edgedb_set_value(self) -> Result<Value> {
-        T::to_edgedb_value(self)
-    }
+    // fn to_edgedb_set_value(self) -> Result<Value> {
+    //     T::to_edgedb_value(self)
+    // }
 
     fn interpret_possibly_missing_required_value(val: Option<Self>) -> Result<Self> {
         match val {
@@ -101,12 +101,12 @@ impl<T: EdgedbValue> EdgedbSetValue for Option<T> {
         }
     }
 
-    fn to_edgedb_set_value(self) -> Result<Value> {
-        match self {
-            Some(v) => T::to_edgedb_value(v),
-            None => Ok(Value::Nothing),
-        }
-    }
+    // fn to_edgedb_set_value(self) -> Result<Value> {
+    //     match self {
+    //         Some(v) => T::to_edgedb_value(v),
+    //         None => Ok(Value::Nothing),
+    //     }
+    // }
 
     fn interpret_possibly_missing_required_value(val: Option<Self>) -> Result<Self> {
         Ok(val.flatten())
@@ -140,14 +140,14 @@ impl<T: EdgedbValue> EdgedbSetValue for Vec<T> {
         }
     }
 
-    fn to_edgedb_set_value(self) -> Result<Value> {
-        let vs = self
-            .into_iter()
-            .map(|v| v.to_edgedb_value())
-            .collect::<Result<_>>()?;
+    // fn to_edgedb_set_value(self) -> Result<Value> {
+    //     let vs = self
+    //         .into_iter()
+    //         .map(|v| v.to_edgedb_value())
+    //         .collect::<Result<_>>()?;
 
-        Ok(Value::Set(vs))
-    }
+    //     Ok(Value::Set(vs))
+    // }
 
     async fn query_direct<Args: EdgedbQueryArgs + Send>(
         client: &Client,
@@ -201,14 +201,14 @@ impl<T: EdgedbValue> EdgedbSetValue for NonEmpty<T> {
         }
     }
 
-    fn to_edgedb_set_value(self) -> Result<Value> {
-        let vs = self
-            .into_iter()
-            .map(|v| v.to_edgedb_value())
-            .collect::<Result<_>>()?;
+    // fn to_edgedb_set_value(self) -> Result<Value> {
+    //     let vs = self
+    //         .into_iter()
+    //         .map(|v| v.to_edgedb_value())
+    //         .collect::<Result<_>>()?;
 
-        Ok(Value::Set(vs))
-    }
+    //     Ok(Value::Set(vs))
+    // }
 
     async fn query_direct<Args: EdgedbQueryArgs + Send>(
         client: &Client,

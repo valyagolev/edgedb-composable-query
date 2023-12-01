@@ -1,3 +1,4 @@
+use crate::prim::EdgedbPrim;
 use crate::EdgedbValue;
 use crate::Result;
 use edgedb_protocol::query_arg::QueryArgs;
@@ -26,13 +27,13 @@ macro_rules! ignore_first {
 macro_rules! impl_tuple {
     ( $count:expr, ($($name:ident,)+), ($($small_name:ident,)+) ) => (
 
-        impl<$($name:EdgedbValue),+> EdgedbQueryArgs for ($($name,)+) {
+        impl<$($name:EdgedbPrim),+> EdgedbQueryArgs for ($($name,)+) {
             type EdgedbArgsType = ($(ignore_first!($name, Value),)+);
 
             fn to_query_args(self) -> Result<Self::EdgedbArgsType> {
                 let ($($small_name,)+) = self;
 
-                Ok(($($small_name.to_edgedb_value()?,)+))
+                Ok(($($small_name.to_edgedb_val()?,)+))
             }
         }
 
@@ -48,7 +49,9 @@ impl_tuple! {6, (T0, T1, T2, T3, T4, T5,), (t0, t1, t2, t3, t4, t5,)}
 
 #[cfg(test)]
 mod test {
-    use crate::{query, value::EdgedbSetValue, EdgedbObject};
+    use serde_json::json;
+
+    use crate::{prim::EdgedbJson, query, value::EdgedbSetValue, EdgedbObject};
 
     #[derive(Debug, PartialEq)]
     struct ExamplImplStruct {
@@ -88,14 +91,14 @@ mod test {
             })
         }
 
-        fn to_edgedb_object(
-            &self,
-        ) -> anyhow::Result<(
-            edgedb_protocol::codec::ObjectShape,
-            Vec<Option<edgedb_protocol::value::Value>>,
-        )> {
-            todo!()
-        }
+        // fn to_edgedb_object(
+        //     &self,
+        // ) -> anyhow::Result<(
+        //     edgedb_protocol::codec::ObjectShape,
+        //     Vec<Option<edgedb_protocol::value::Value>>,
+        // )> {
+        //     todo!()
+        // }
     }
 
     #[tokio::test]
@@ -111,6 +114,19 @@ mod test {
             .await?,
             ExamplImplStruct {
                 a: "hi".to_string(),
+                b: Some("3".to_string())
+            }
+        );
+
+        assert_eq!(
+            query::<ExamplImplStruct, _>(
+                &conn,
+                "select { a := <str>(<json>$0)['a'], b := <str><int32>(<json>$0)['b'] }",
+                (EdgedbJson(json!({"a": "hello", "b": 3})),)
+            )
+            .await?,
+            ExamplImplStruct {
+                a: "hello".to_string(),
                 b: Some("3".to_string())
             }
         );
