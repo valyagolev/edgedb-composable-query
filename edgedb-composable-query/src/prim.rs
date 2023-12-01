@@ -26,21 +26,12 @@ macro_rules! impl_prim {
             }
 
             impl EdgedbValue for $t {
-                const EXPECTED_CARDINALITY: edgedb_protocol::server_message::Cardinality =
-                    edgedb_protocol::server_message::Cardinality::One;
-
                 fn from_edgedb_value(value: Value) -> Result<Self> {
                     <$t>::from_edgedb_val(value)
                 }
 
                 fn to_edgedb_value(self) -> Result<Value> {
                     <$t>::to_edgedb_val(self)
-                }
-
-                async fn query_direct(client: &Client, q: &str) -> Result<Self> {
-                    let val = client.query_required_single::<Value, _>(q, &()).await?;
-                    let val = Self::from_edgedb_value(val)?;
-                    Ok(val)
                 }
             }
         )*
