@@ -20,7 +20,7 @@ pub trait EdgedbObject: Sized {
     fn to_edgedb_object(&self) -> Result<(ObjectShape, Vec<Option<Value>>)>;
 }
 
-pub async fn query<T: EdgedbSetValue, Args: EdgedbQueryArgs>(
+pub async fn query<T: EdgedbSetValue, Args: EdgedbQueryArgs + Send>(
     client: &Client,
     q: &str,
     args: Args,
