@@ -5,6 +5,7 @@ use edgedb_tokio::Client;
 pub use nonempty::{nonempty, NonEmpty};
 pub mod prim;
 pub mod refs;
+pub mod tuples;
 pub mod value;
 use crate::value::EdgedbSetValue;
 use edgedb_protocol::{codec::ObjectShape, query_arg::QueryArgs, value::Value};
