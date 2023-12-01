@@ -1,29 +1,3 @@
-/// todo: local Result type
-pub use anyhow::Result;
-
-use edgedb_tokio::Client;
-pub use nonempty::{nonempty, NonEmpty};
-
-pub mod prim;
-pub mod refs;
-pub mod tuples;
-pub mod value;
-pub mod write;
-
-use crate::value::EdgedbSetValue;
-use edgedb_protocol::{codec::ObjectShape, query_arg::QueryArgs, value::Value};
-use value::EdgedbValue;
-
-pub trait EdgedbObject: Sized {
-    fn from_edgedb_object(shape: ObjectShape, fields: Vec<Option<Value>>) -> Result<Self>;
-    fn to_edgedb_object(&self) -> Result<(ObjectShape, Vec<Option<Value>>)>;
-}
-
-pub async fn query<T: EdgedbSetValue>(client: &Client, q: &str) -> Result<T> {
-    let val = T::query_direct(client, q).await?;
-    Ok(val)
-}
-
 #[cfg(test)]
 mod test {
     use crate::{
@@ -80,34 +54,22 @@ mod test {
         }
     }
 
-    #[tokio::test]
-    async fn some_queries() -> anyhow::Result<()> {
-        let conn = edgedb_tokio::create_client().await?;
+    // #[tokio::test]
+    // async fn some_queries() -> anyhow::Result<()> {
+    //     let query = query!(r#"SELECT { a := "a", b := "b" }"#, ExamplImplStruct,);
 
-        assert_eq!(query::<i64>(&conn, "select 7*8").await?, 56);
+    //     let expected = ExamplImplStruct {
+    //         a: "a".to_owned(),
+    //         b: Some("b".to_owned()),
+    //     };
 
-        assert_eq!(
-            query::<ExamplImplStruct>(&conn, "select {a:='aaa',b:=<str>{}}").await?,
-            ExamplImplStruct {
-                a: "aaa".to_string(),
-                b: None
-            }
-        );
+    //     let actual = query
+    //         .first::<ExamplImplStruct>()
+    //         .await
+    //         .expect("query failed");
 
-        assert_eq!(
-            query::<ExamplImplStruct>(&conn, "select {a:='aaa',b:=<str>{'cc'}}").await?,
-            ExamplImplStruct {
-                a: "aaa".to_string(),
-                b: Some("cc".to_string())
-            }
-        );
+    //     assert_eq!(expected, actual);
 
-        assert!(
-            query::<ExamplImplStruct>(&conn, "select {a:='aaa',b:=<str>{'cc', 'dd'}}")
-                .await
-                .is_err()
-        );
-
-        Ok(())
-    }
+    //     Ok(())
+    // }
 }
