@@ -120,12 +120,7 @@ impl_tuple! {6, (T0, T1, T2, T3, T4, T5,), (t0, t1, t2, t3, t4, t5,)}
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        query,
-        refs::Ref,
-        value::{EdgedbSetValue, EdgedbValue},
-        EdgedbObject,
-    };
+    use crate::{query, refs::Ref, value::EdgedbSetValue, EdgedbObject};
 
     #[derive(Debug, PartialEq)]
     struct Inner {
@@ -146,13 +141,13 @@ mod test {
                     "req" => {
                         req = fields[i]
                             .take()
-                            .map(|v| EdgedbSetValue::from_edgedb_set_value(v))
+                            .map(EdgedbSetValue::from_edgedb_set_value)
                             .transpose()?;
                     }
                     "opt" => {
                         opt = fields[i]
                             .take()
-                            .map(|v| EdgedbSetValue::from_edgedb_set_value(v))
+                            .map(EdgedbSetValue::from_edgedb_set_value)
                             .transpose()?;
                     }
                     _ => {}

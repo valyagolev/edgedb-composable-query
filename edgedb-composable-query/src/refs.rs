@@ -46,12 +46,7 @@ impl<T: EdgedbObject> EdgedbValue for Ref<T> {
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        query,
-        refs::Ref,
-        value::{EdgedbSetValue, EdgedbValue},
-        EdgedbObject,
-    };
+    use crate::{value::EdgedbSetValue, EdgedbObject};
 
     #[derive(Debug, PartialEq)]
     struct Inner {
@@ -72,13 +67,13 @@ mod test {
                     "req" => {
                         req = fields[i]
                             .take()
-                            .map(|v| EdgedbSetValue::from_edgedb_set_value(v))
+                            .map(EdgedbSetValue::from_edgedb_set_value)
                             .transpose()?;
                     }
                     "opt" => {
                         opt = fields[i]
                             .take()
-                            .map(|v| EdgedbSetValue::from_edgedb_set_value(v))
+                            .map(EdgedbSetValue::from_edgedb_set_value)
                             .transpose()?;
                     }
                     _ => {}
@@ -103,7 +98,7 @@ mod test {
 
     #[tokio::test]
     async fn some_queries() -> anyhow::Result<()> {
-        let conn = edgedb_tokio::create_client().await?;
+        let _conn = edgedb_tokio::create_client().await?;
 
         // dbg!(query::<Vec<Ref<Inner>>>(&conn, "select Inner;").await?);
         // dbg!(query::<Vec<Ref<Inner>>>(&conn, "select Inner {id, opt, req};").await?);

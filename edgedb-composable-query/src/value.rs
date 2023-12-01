@@ -1,10 +1,10 @@
 pub use crate::Result;
-use crate::{args::EdgedbQueryArgs, prim::EdgedbPrim, EdgedbObject};
+use crate::{args::EdgedbQueryArgs, EdgedbObject};
 
 use edgedb_tokio::Client;
 pub use nonempty::{nonempty, NonEmpty};
 
-use edgedb_protocol::{codec::ObjectShape, query_arg::QueryArgs, value::Value};
+use edgedb_protocol::value::Value;
 
 pub trait EdgedbValue: Sized {
     /// use Value by default
@@ -50,18 +50,16 @@ impl<T: EdgedbValue> EdgedbSetValue for T {
     const EXPECTED_CARDINALITY: edgedb_protocol::server_message::Cardinality =
         edgedb_protocol::server_message::Cardinality::One;
 
-    fn query_direct<Args: EdgedbQueryArgs + Send>(
+    async fn query_direct<Args: EdgedbQueryArgs + Send>(
         client: &Client,
         q: &str,
         args: Args,
-    ) -> impl std::future::Future<Output = Result<Self>> + Send {
-        async {
-            let val = client
-                .query_required_single::<Value, _>(q, &args.as_query_args()?)
-                .await?;
-            let val = Self::from_edgedb_value(val)?;
-            Ok(val)
-        }
+    ) -> Result<Self> {
+        let val = client
+            .query_required_single::<Value, _>(q, &args.as_query_args()?)
+            .await?;
+        let val = Self::from_edgedb_value(val)?;
+        Ok(val)
     }
 
     fn from_edgedb_set_value(value: Value) -> Result<Self> {
@@ -84,18 +82,16 @@ impl<T: EdgedbValue> EdgedbSetValue for Option<T> {
     const EXPECTED_CARDINALITY: edgedb_protocol::server_message::Cardinality =
         edgedb_protocol::server_message::Cardinality::AtMostOne;
 
-    fn query_direct<Args: EdgedbQueryArgs + Send>(
+    async fn query_direct<Args: EdgedbQueryArgs + Send>(
         client: &Client,
         q: &str,
         args: Args,
-    ) -> impl std::future::Future<Output = Result<Self>> + Send {
-        async {
-            let val = client
-                .query_single::<Value, _>(q, &args.as_query_args()?)
-                .await?;
-            let val = val.map(|val| T::from_edgedb_value(val)).transpose()?;
-            Ok(val)
-        }
+    ) -> Result<Self> {
+        let val = client
+            .query_single::<Value, _>(q, &args.as_query_args()?)
+            .await?;
+        let val = val.map(|val| T::from_edgedb_value(val)).transpose()?;
+        Ok(val)
     }
 
     fn from_edgedb_set_value(value: Value) -> Result<Self> {
@@ -131,13 +127,16 @@ impl<T: EdgedbValue> EdgedbSetValue for Vec<T> {
                 .into_iter()
                 .map(|val| T::from_edgedb_value(val))
                 .collect(),
-            Value::Array(vals) => {
+            Value::Array(_vals) => {
                 todo!("Wrong cardinality/type (array), or just fine?..")
             }
-            Value::Object { shape, fields } => {
+            Value::Object {
+                shape: _,
+                fields: _,
+            } => {
                 todo!("Wrong cardinality/type (object), or just fine?..")
             }
-            _ => return Err(anyhow::anyhow!("expected object")),
+            _ => Err(anyhow::anyhow!("expected object")),
         }
     }
 
@@ -150,23 +149,21 @@ impl<T: EdgedbValue> EdgedbSetValue for Vec<T> {
         Ok(Value::Set(vs))
     }
 
-    fn query_direct<Args: EdgedbQueryArgs + Send>(
+    async fn query_direct<Args: EdgedbQueryArgs + Send>(
         client: &Client,
         q: &str,
         args: Args,
-    ) -> impl std::future::Future<Output = Result<Self>> + Send {
-        async {
-            let val = client.query::<Value, _>(q, &args.as_query_args()?).await?;
+    ) -> Result<Self> {
+        let val = client.query::<Value, _>(q, &args.as_query_args()?).await?;
 
-            dbg!(&val);
+        dbg!(&val);
 
-            let val = val
-                .into_iter()
-                .map(|val| T::from_edgedb_value(val))
-                .collect::<Result<_>>()?;
+        let val = val
+            .into_iter()
+            .map(|val| T::from_edgedb_value(val))
+            .collect::<Result<_>>()?;
 
-            Ok(val)
-        }
+        Ok(val)
     }
 
     fn interpret_possibly_missing_required_value(val: Option<Self>) -> Result<Self> {
@@ -191,13 +188,16 @@ impl<T: EdgedbValue> EdgedbSetValue for NonEmpty<T> {
 
                 NonEmpty::from_vec(vs).ok_or_else(|| anyhow::anyhow!("expected non-empty set"))
             }
-            Value::Array(vals) => {
+            Value::Array(_vals) => {
                 todo!("NonEmpty: Wrong cardinality/type (array), or just fine?..")
             }
-            Value::Object { shape, fields } => {
+            Value::Object {
+                shape: _,
+                fields: _,
+            } => {
                 todo!("NonEmpty: Wrong cardinality/type (object), or just fine?..")
             }
-            _ => return Err(anyhow::anyhow!("expected object")),
+            _ => Err(anyhow::anyhow!("expected object")),
         }
     }
 
@@ -210,22 +210,20 @@ impl<T: EdgedbValue> EdgedbSetValue for NonEmpty<T> {
         Ok(Value::Set(vs))
     }
 
-    fn query_direct<Args: EdgedbQueryArgs + Send>(
+    async fn query_direct<Args: EdgedbQueryArgs + Send>(
         client: &Client,
         q: &str,
         args: Args,
-    ) -> impl std::future::Future<Output = Result<Self>> + Send {
-        async {
-            let val = client.query::<Value, _>(q, &args.as_query_args()?).await?;
-            let val = val
-                .into_iter()
-                .map(|val| T::from_edgedb_value(val))
-                .collect::<Result<_>>()?;
-            NonEmpty::from_vec(val).ok_or_else(|| anyhow::anyhow!("expected non-empty set"))
-        }
+    ) -> Result<Self> {
+        let val = client.query::<Value, _>(q, &args.as_query_args()?).await?;
+        let val = val
+            .into_iter()
+            .map(|val| T::from_edgedb_value(val))
+            .collect::<Result<_>>()?;
+        NonEmpty::from_vec(val).ok_or_else(|| anyhow::anyhow!("expected non-empty set"))
     }
 
     fn interpret_possibly_missing_required_value(val: Option<Self>) -> Result<Self> {
-        Ok(val.ok_or_else(|| anyhow::anyhow!("expected non-empty set"))?)
+        val.ok_or_else(|| anyhow::anyhow!("expected non-empty set"))
     }
 }

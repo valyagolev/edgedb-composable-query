@@ -1,5 +1,5 @@
 use crate::EdgedbValue;
-use crate::{EdgedbObject, Result};
+use crate::Result;
 use edgedb_protocol::query_arg::QueryArgs;
 use edgedb_protocol::value::Value;
 
@@ -48,11 +48,7 @@ impl_tuple! {6, (T0, T1, T2, T3, T4, T5,), (t0, t1, t2, t3, t4, t5,)}
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        query,
-        value::{EdgedbSetValue, EdgedbValue},
-        EdgedbObject,
-    };
+    use crate::{query, value::EdgedbSetValue, EdgedbObject};
 
     #[derive(Debug, PartialEq)]
     struct ExamplImplStruct {
@@ -73,13 +69,13 @@ mod test {
                     "a" => {
                         a = fields[i]
                             .take()
-                            .map(|v| EdgedbSetValue::from_edgedb_set_value(v))
+                            .map(EdgedbSetValue::from_edgedb_set_value)
                             .transpose()?;
                     }
                     "b" => {
                         b = fields[i]
                             .take()
-                            .map(|v| EdgedbSetValue::from_edgedb_set_value(v))
+                            .map(EdgedbSetValue::from_edgedb_set_value)
                             .transpose()?;
                     }
                     _ => {}

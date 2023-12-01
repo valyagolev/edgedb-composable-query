@@ -12,7 +12,7 @@ pub mod tuples;
 pub mod value;
 
 use crate::value::EdgedbSetValue;
-use edgedb_protocol::{codec::ObjectShape, query_arg::QueryArgs, value::Value};
+use edgedb_protocol::{codec::ObjectShape, value::Value};
 use value::EdgedbValue;
 
 pub trait EdgedbObject: Sized {
@@ -31,11 +31,7 @@ pub async fn query<T: EdgedbSetValue, Args: EdgedbQueryArgs + Send>(
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        query,
-        value::{EdgedbSetValue, EdgedbValue},
-        EdgedbObject,
-    };
+    use crate::{query, value::EdgedbSetValue, EdgedbObject};
 
     #[derive(Debug, PartialEq)]
     struct ExamplImplStruct {
@@ -56,13 +52,13 @@ mod test {
                     "a" => {
                         a = fields[i]
                             .take()
-                            .map(|v| EdgedbSetValue::from_edgedb_set_value(v))
+                            .map(EdgedbSetValue::from_edgedb_set_value)
                             .transpose()?;
                     }
                     "b" => {
                         b = fields[i]
                             .take()
-                            .map(|v| EdgedbSetValue::from_edgedb_set_value(v))
+                            .map(EdgedbSetValue::from_edgedb_set_value)
                             .transpose()?;
                     }
                     _ => {}
