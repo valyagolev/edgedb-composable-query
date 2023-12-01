@@ -6,13 +6,13 @@ use edgedb_protocol::value::Value;
 pub trait EdgedbQueryArgs {
     type EdgedbArgsType: QueryArgs;
 
-    fn as_query_args(self) -> Result<Self::EdgedbArgsType>;
+    fn to_query_args(self) -> Result<Self::EdgedbArgsType>;
 }
 
 impl EdgedbQueryArgs for () {
     type EdgedbArgsType = ();
 
-    fn as_query_args(self) -> Result<Self::EdgedbArgsType> {
+    fn to_query_args(self) -> Result<Self::EdgedbArgsType> {
         Ok(self)
     }
 }
@@ -29,7 +29,7 @@ macro_rules! impl_tuple {
         impl<$($name:EdgedbValue),+> EdgedbQueryArgs for ($($name,)+) {
             type EdgedbArgsType = ($(ignore_first!($name, Value),)+);
 
-            fn as_query_args(self) -> Result<Self::EdgedbArgsType> {
+            fn to_query_args(self) -> Result<Self::EdgedbArgsType> {
                 let ($($small_name,)+) = self;
 
                 Ok(($($small_name.to_edgedb_value()?,)+))

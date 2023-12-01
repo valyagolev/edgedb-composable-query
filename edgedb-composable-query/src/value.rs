@@ -56,7 +56,7 @@ impl<T: EdgedbValue> EdgedbSetValue for T {
         args: Args,
     ) -> Result<Self> {
         let val = client
-            .query_required_single::<Value, _>(q, &args.as_query_args()?)
+            .query_required_single::<Value, _>(q, &args.to_query_args()?)
             .await?;
         let val = Self::from_edgedb_value(val)?;
         Ok(val)
@@ -88,7 +88,7 @@ impl<T: EdgedbValue> EdgedbSetValue for Option<T> {
         args: Args,
     ) -> Result<Self> {
         let val = client
-            .query_single::<Value, _>(q, &args.as_query_args()?)
+            .query_single::<Value, _>(q, &args.to_query_args()?)
             .await?;
         let val = val.map(|val| T::from_edgedb_value(val)).transpose()?;
         Ok(val)
@@ -154,7 +154,7 @@ impl<T: EdgedbValue> EdgedbSetValue for Vec<T> {
         q: &str,
         args: Args,
     ) -> Result<Self> {
-        let val = client.query::<Value, _>(q, &args.as_query_args()?).await?;
+        let val = client.query::<Value, _>(q, &args.to_query_args()?).await?;
 
         dbg!(&val);
 
@@ -215,7 +215,7 @@ impl<T: EdgedbValue> EdgedbSetValue for NonEmpty<T> {
         q: &str,
         args: Args,
     ) -> Result<Self> {
-        let val = client.query::<Value, _>(q, &args.as_query_args()?).await?;
+        let val = client.query::<Value, _>(q, &args.to_query_args()?).await?;
         let val = val
             .into_iter()
             .map(|val| T::from_edgedb_value(val))
