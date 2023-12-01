@@ -1,0 +1,18 @@
+1. macro for a struct to convert To and From an Object (with ObjectShape...)
+    object *itself* doesn't have a cardinality, but the fields do
+    so each field....
+
+        field: Option<T>
+    how do we get cardinality from here?
+
+        struct SomeStruct {fields};
+
+        trait FromObject;
+        impl FromObject for SomeStruct;
+
+        trait FromObjectSet: HasCardinality;
+        impl FromObjectSet for SomeStruct;
+        impl<T> FromObjectSet for Option<T> {}
+        impl<T> FromObjectSet for Vec<T> {}
+        
+2. for a query, we want to have a default cardinality

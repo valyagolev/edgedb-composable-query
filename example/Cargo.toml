@@ -9,8 +9,8 @@
     edgedb-composable-query-derive = { path = "../edgedb-composable-query-derive" }
     edgedb-composable-query        = { path = "../edgedb-composable-query" }
     edgedb-protocol                = "0.6.0"
-axum = "0.6.20"
-edgedb-tokio = "0.5.0"
+    axum                           = "0.6.20"
+    edgedb-tokio                   = "0.5.0"
 
 [dev-dependencies]
-tokio = { version = "1.34.0", features = ["full"] }
+    tokio = { version = "1.34.0", features = ["full"] }

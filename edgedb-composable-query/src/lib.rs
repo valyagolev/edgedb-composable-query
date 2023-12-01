@@ -1,276 +1,185 @@
-use edgedb_protocol::{
-    model::Uuid,
-    query_arg::{QueryArg, QueryArgs},
-    value::Value,
-    QueryResult,
-};
-#[doc(hidden)]
-pub use itertools;
+/// todo: local Result type
+pub use anyhow::Result;
 
-#[doc(hidden)]
-pub fn query_add_indent(s: &str) -> String {
-    s.replace('\n', "\n\t")
+use edgedb_tokio::Client;
+pub use nonempty::{nonempty, NonEmpty};
+
+use edgedb_protocol::{codec::ObjectShape, query_arg::QueryArgs, value::Value};
+
+pub trait EdgedbObject: Sized {
+    fn from_edgedb_object(shape: ObjectShape, fields: Vec<Option<Value>>) -> Result<Self>;
+    fn to_edgedb_object(&self) -> Result<(ObjectShape, Vec<Option<Value>>)>;
 }
 
-pub trait AsPrimitiveEdgedbVar {
-    const EDGEDB_TYPE_NAME: &'static str;
-    // const IS_OPTIONAL: bool = false;
+pub trait EdgedbValue: Sized {
+    const EXPECTED_CARDINALITY: edgedb_protocol::server_message::Cardinality;
 
-    fn as_query_arg(&self) -> Value;
-    fn from_query_result(t: Value) -> Self;
+    fn from_edgedb_value(value: Value) -> Result<Self>;
+    fn to_edgedb_value(&self) -> Result<Value>;
+
+    async fn query_direct(client: &Client, q: &str) -> Result<Self>;
 }
 
-pub trait AsEdgedbVar {
-    const EDGEDB_TYPE_NAME: Option<&'static str>;
-    const IS_OPTIONAL: bool;
+impl<T: EdgedbObject> EdgedbValue for T {
+    const EXPECTED_CARDINALITY: edgedb_protocol::server_message::Cardinality =
+        edgedb_protocol::server_message::Cardinality::One;
 
-    fn type_cast() -> String {
-        let Some(name) = Self::EDGEDB_TYPE_NAME else {
-            return "".to_string();
+    fn from_edgedb_value(value: Value) -> Result<Self> {
+        let (shape, fields) = match value {
+            Value::Object { shape, fields } => (shape, fields),
+            _ => return Err(anyhow::anyhow!("expected object")),
         };
-
-        if Self::IS_OPTIONAL {
-            format!("<optional {}>", name)
-        } else {
-            format!("<required {}>", name)
-        }
+        Self::from_edgedb_object(shape, fields)
     }
 
-    fn as_query_arg(&self) -> Value;
-    fn from_query_result(t: Value) -> Self;
-}
-
-impl AsPrimitiveEdgedbVar for i32 {
-    const EDGEDB_TYPE_NAME: &'static str = "int32";
-
-    fn as_query_arg(&self) -> Value {
-        (*self).into()
+    fn to_edgedb_value(&self) -> Result<Value> {
+        let (shape, fields) = self.to_edgedb_object()?;
+        Ok(Value::Object { shape, fields })
     }
 
-    fn from_query_result(t: Value) -> Self {
-        match t {
-            Value::Int16(v) => v as i32,
-            Value::Int32(v) => v,
-            Value::Int64(v) => v as i32,
-            _ => panic!("invalid type"),
-        }
+    async fn query_direct(client: &Client, q: &str) -> Result<Self> {
+        let val = client.query_required_single::<Value, _>(q, &()).await?;
+        let val = Self::from_edgedb_value(val)?;
+        Ok(val)
     }
 }
 
-impl AsPrimitiveEdgedbVar for usize {
-    const EDGEDB_TYPE_NAME: &'static str = "int64";
+impl<T: EdgedbObject> EdgedbValue for Option<T> {
+    const EXPECTED_CARDINALITY: edgedb_protocol::server_message::Cardinality =
+        edgedb_protocol::server_message::Cardinality::AtMostOne;
 
-    fn as_query_arg(&self) -> Value {
-        (*self as i64).into()
-    }
-
-    fn from_query_result(t: Value) -> Self {
-        match t {
-            Value::Int16(v) => v as usize,
-            Value::Int32(v) => v as usize,
-            Value::Int64(v) => v as usize,
-            _ => panic!("invalid type"),
-        }
-    }
-}
-impl AsPrimitiveEdgedbVar for String {
-    const EDGEDB_TYPE_NAME: &'static str = "str";
-
-    fn as_query_arg(&self) -> Value {
-        self.clone().into()
-    }
-
-    fn from_query_result(t: Value) -> Self {
-        match t {
-            Value::Str(v) => v,
-            _ => panic!("invalid type"),
-        }
-    }
-}
-impl AsPrimitiveEdgedbVar for Uuid {
-    const EDGEDB_TYPE_NAME: &'static str = "uuid";
-
-    fn as_query_arg(&self) -> Value {
-        Value::Uuid(self.clone())
-    }
-
-    fn from_query_result(t: Value) -> Self {
-        match t {
-            Value::Uuid(v) => v,
-            _ => panic!("invalid type"),
-        }
-    }
-}
-
-impl<T: AsPrimitiveEdgedbVar> AsEdgedbVar for T {
-    const EDGEDB_TYPE_NAME: Option<&'static str> =
-        Some(<T as AsPrimitiveEdgedbVar>::EDGEDB_TYPE_NAME);
-    const IS_OPTIONAL: bool = false;
-
-    fn as_query_arg(&self) -> Value {
-        <T as AsPrimitiveEdgedbVar>::as_query_arg(self)
-    }
-
-    fn from_query_result(t: Value) -> Self {
-        <T as AsPrimitiveEdgedbVar>::from_query_result(t)
-    }
-}
-
-impl<T: AsPrimitiveEdgedbVar> AsEdgedbVar for Option<T> {
-    const EDGEDB_TYPE_NAME: Option<&'static str> =
-        Some(<T as AsPrimitiveEdgedbVar>::EDGEDB_TYPE_NAME);
-    const IS_OPTIONAL: bool = true;
-
-    fn as_query_arg(&self) -> Value {
-        match self {
-            Some(t) => t.as_query_arg(),
-            None => Value::Nothing,
-        }
-    }
-
-    fn from_query_result(t: Value) -> Self {
-        if t == Value::Nothing {
-            None
-        } else {
-            Some(T::from_query_result(t))
-        }
-    }
-}
-
-impl<T: AsPrimitiveEdgedbVar> ComposableQuerySelector for T {
-    const RESULT_TYPE: ComposableQueryResultKind = ComposableQueryResultKind::Field;
-
-    fn format_selector(_fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
-        Ok(())
-    }
-
-    fn format_subquery(_fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
-        Ok(())
-    }
-}
-
-impl<T: ComposableQuerySelector> ComposableQuerySelector for Option<T> {
-    const RESULT_TYPE: ComposableQueryResultKind = ComposableQueryResultKind::Field;
-
-    fn format_selector(_fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
-        Ok(())
-    }
-
-    fn format_subquery(_fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
-        Ok(())
-    }
-}
-
-pub enum ComposableQueryResultKind {
-    Field,
-    Selector,
-    FreeObject,
-}
-
-pub trait ComposableQuerySelector {
-    const RESULT_TYPE: ComposableQueryResultKind;
-
-    fn format_selector(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error>;
-
-    fn format_subquery(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
-        match Self::RESULT_TYPE {
-            ComposableQueryResultKind::Field => {
-                return Ok(());
+    fn from_edgedb_value(value: Value) -> Result<Self> {
+        match value {
+            Value::Object { shape, fields } => {
+                if fields.is_empty() {
+                    Ok(None)
+                } else {
+                    Ok(Some(T::from_edgedb_object(shape, fields)?))
+                }
             }
-            ComposableQueryResultKind::Selector => fmt.write_str(": ")?,
-            ComposableQueryResultKind::FreeObject => fmt.write_str(" := ")?,
-        };
+            Value::Nothing => Ok(None),
+            _ => Err(anyhow::anyhow!("expected object or None")),
+        }
+    }
 
-        Self::format_selector(fmt)
+    fn to_edgedb_value(&self) -> Result<Value> {
+        match self {
+            Some(value) => value.to_edgedb_value(),
+            None => Ok(Value::Nothing),
+        }
+    }
+
+    async fn query_direct(client: &Client, q: &str) -> Result<Self> {
+        let val = client.query_single::<Value, _>(q, &()).await?;
+        let val = val.map(|val| T::from_edgedb_value(val)).transpose()?;
+        Ok(val)
     }
 }
 
-impl<T: ComposableQuerySelector> ComposableQuerySelector for Vec<T> {
-    const RESULT_TYPE: ComposableQueryResultKind = T::RESULT_TYPE;
+impl<T: EdgedbObject> EdgedbValue for Vec<T> {
+    const EXPECTED_CARDINALITY: edgedb_protocol::server_message::Cardinality =
+        edgedb_protocol::server_message::Cardinality::Many;
 
-    fn format_selector(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
-        T::format_selector(fmt)
-    }
-}
-
-impl AsEdgedbVar for () {
-    const EDGEDB_TYPE_NAME: Option<&'static str> = None;
-
-    const IS_OPTIONAL: bool = false;
-
-    fn as_query_arg(&self) -> Value {
-        todo!()
-    }
-
-    fn from_query_result(t: Value) -> Self {
-        todo!()
-    }
-}
-
-impl<T1: AsEdgedbVar> AsEdgedbVar for (T1,) {
-    const EDGEDB_TYPE_NAME: Option<&'static str> = None; // todo
-
-    const IS_OPTIONAL: bool = false;
-
-    fn as_query_arg(&self) -> Value {
-        // Value::Tuple(vec![self.0.as_query_arg()])
-        self.0.as_query_arg()
+    fn from_edgedb_value(value: Value) -> Result<Self> {
+        match value {
+            Value::Nothing => {
+                // Ok(Vec::new())
+                todo!("Wrong cardinality/type (nothing), or just fine?..")
+            }
+            Value::Set(vals) => vals
+                .into_iter()
+                .map(|val| T::from_edgedb_value(val))
+                .collect(),
+            Value::Array(vals) => {
+                todo!("Wrong cardinality/type (array), or just fine?..")
+            }
+            Value::Object { shape, fields } => {
+                todo!("Wrong cardinality/type (object), or just fine?..")
+            }
+            _ => return Err(anyhow::anyhow!("expected object")),
+        }
     }
 
-    fn from_query_result(t: Value) -> Self {
-        todo!()
-    }
-}
-
-impl<T1: AsEdgedbVar, T2: AsEdgedbVar> AsEdgedbVar for (T1, T2) {
-    const EDGEDB_TYPE_NAME: Option<&'static str> = None; // todo
-
-    const IS_OPTIONAL: bool = false;
-
-    fn as_query_arg(&self) -> Value {
-        todo!()
-    }
-
-    fn from_query_result(t: Value) -> Self {
-        todo!()
-    }
-}
-
-pub trait ComposableQuery: ComposableQuerySelector {
-    const ARG_NAMES: &'static [&'static str];
-
-    type ArgTypes: AsEdgedbVar;
-    type ReturnType: AsEdgedbVar;
-
-    fn format_query(
-        fmt: &mut impl std::fmt::Write,
-        args: &::std::collections::HashMap<&str, String>,
-    ) -> Result<(), std::fmt::Error>;
-
-    fn query() -> String {
-        let mut buf = String::new();
-        // let args = (0..Self::ARG_NAMES.len())
-        //     .map(|i| (format!("${}", i)))
-        //     .collect();
-
-        let args = Self::ARG_NAMES
+    fn to_edgedb_value(&self) -> Result<Value> {
+        let vs = self
             .iter()
-            .enumerate()
-            .map(|(i, n)| (*n, format!("${i}")))
-            .collect();
+            .map(|v| v.to_edgedb_value())
+            .collect::<Result<_>>()?;
 
-        Self::format_query(&mut buf, &args).unwrap();
-        buf
+        Ok(Value::Set(vs))
+    }
+
+    async fn query_direct(client: &Client, q: &str) -> Result<Self> {
+        let val = client.query::<Value, _>(q, &()).await?;
+        let val = val
+            .into_iter()
+            .map(|val| T::from_edgedb_value(val))
+            .collect::<Result<_>>()?;
+        Ok(val)
     }
 }
 
-pub async fn query<T: ComposableQuery>(
-    client: edgedb_tokio::Client,
-    args: T::ArgTypes,
-) -> Result<T::ReturnType, edgedb_tokio::Error> {
-    let v = client
-        .query::<Value, (Value,)>(&T::query(), &(args.as_query_arg(),))
-        .await?;
+impl<T: EdgedbObject> EdgedbValue for NonEmpty<T> {
+    const EXPECTED_CARDINALITY: edgedb_protocol::server_message::Cardinality =
+        edgedb_protocol::server_message::Cardinality::AtLeastOne;
 
-    Ok(T::ReturnType::from_query_result(Value::Set(v)))
+    fn from_edgedb_value(value: Value) -> Result<Self> {
+        match value {
+            Value::Nothing => {
+                todo!("NonEmpty: Wrong cardinality/type (nothing), or just fine?..")
+            }
+            Value::Set(vals) => {
+                let vs = vals
+                    .into_iter()
+                    .map(|val| T::from_edgedb_value(val))
+                    .collect::<Result<_>>()?;
+
+                NonEmpty::from_vec(vs).ok_or_else(|| anyhow::anyhow!("expected non-empty set"))
+            }
+            Value::Array(vals) => {
+                todo!("NonEmpty: Wrong cardinality/type (array), or just fine?..")
+            }
+            Value::Object { shape, fields } => {
+                todo!("NonEmpty: Wrong cardinality/type (object), or just fine?..")
+            }
+            _ => return Err(anyhow::anyhow!("expected object")),
+        }
+    }
+
+    fn to_edgedb_value(&self) -> Result<Value> {
+        let vs = self
+            .iter()
+            .map(|v| v.to_edgedb_value())
+            .collect::<Result<_>>()?;
+
+        Ok(Value::Set(vs))
+    }
+
+    async fn query_direct(client: &Client, q: &str) -> Result<Self> {
+        let val = client.query::<Value, _>(q, &()).await?;
+        let val = val
+            .into_iter()
+            .map(|val| T::from_edgedb_value(val))
+            .collect::<Result<_>>()?;
+        NonEmpty::from_vec(val).ok_or_else(|| anyhow::anyhow!("expected non-empty set"))
+    }
+}
+
+pub async fn query<T: EdgedbValue>(client: &Client, q: &str) -> Result<T> {
+    let val = T::query_direct(client, q).await?;
+    Ok(val)
+}
+
+#[cfg(test)]
+mod test {
+    use crate::query;
+
+    #[tokio::test]
+    async fn some_queries() -> anyhow::Result<()> {
+        let conn = edgedb_tokio::create_client().await?;
+
+        let v = query::<i64>(&conn, "select 7*8").await?;
+
+        Ok(())
+    }
 }
