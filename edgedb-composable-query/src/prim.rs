@@ -1,7 +1,7 @@
 use crate::value::EdgedbValue;
 use crate::Result;
+use edgedb_protocol::model::Uuid;
 use edgedb_protocol::value::Value;
-use edgedb_tokio::Client;
 
 pub trait EdgedbPrim: Sized {
     fn from_edgedb_val(value: Value) -> Result<Self>;
@@ -48,5 +48,6 @@ impl_prim! {
     f32 => Float32,
     f64 => Float64,
     bool => Bool,
-    String => Str
+    String => Str,
+    Uuid => Uuid
 }

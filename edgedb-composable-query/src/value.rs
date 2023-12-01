@@ -127,10 +127,14 @@ impl<T: EdgedbValue> EdgedbSetValue for Vec<T> {
 
     async fn query_direct(client: &Client, q: &str) -> Result<Self> {
         let val = client.query::<Value, _>(q, &()).await?;
+
+        dbg!(&val);
+
         let val = val
             .into_iter()
             .map(|val| T::from_edgedb_value(val))
             .collect::<Result<_>>()?;
+
         Ok(val)
     }
 

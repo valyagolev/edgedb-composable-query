@@ -4,6 +4,7 @@ pub use anyhow::Result;
 use edgedb_tokio::Client;
 pub use nonempty::{nonempty, NonEmpty};
 pub mod prim;
+pub mod refs;
 pub mod value;
 use crate::value::EdgedbSetValue;
 use edgedb_protocol::{codec::ObjectShape, query_arg::QueryArgs, value::Value};
@@ -14,7 +15,7 @@ pub trait EdgedbObject: Sized {
     fn to_edgedb_object(&self) -> Result<(ObjectShape, Vec<Option<Value>>)>;
 }
 
-pub async fn query<T: EdgedbValue>(client: &Client, q: &str) -> Result<T> {
+pub async fn query<T: EdgedbSetValue>(client: &Client, q: &str) -> Result<T> {
     let val = T::query_direct(client, q).await?;
     Ok(val)
 }
