@@ -34,44 +34,43 @@ pub fn derive_edgedb_object_impl(item: DeriveInput) -> darling::Result<proc_macr
         .map(|f| f.ident.as_ref().unwrap())
         .collect::<Vec<_>>();
 
+    let item_name = &item.ident;
+
     Ok(quote! {
 
-        fn from_edgedb_object(
-            shape: edgedb_protocol::codec::ObjectShape,
-            mut fields: Vec<Option<edgedb_protocol::value::Value>>,
-        ) -> anyhow::Result<Self> {
-            #(
-                let mut #field_names = None;
-            )*;
+        impl EdgedbObject for #item_name {
 
-            for (i, s) in shape.elements.iter().enumerate() {
-                match s.name.as_str() {
-                    #(
-                        stringify!(#field_names) => {
-                            #field_names = fields[i]
-                                .take()
-                                .map(EdgedbSetValue::from_edgedb_set_value)
-                                .transpose()?;
-                        }
-                    )*
-                }
-            }
+            fn from_edgedb_object(
+                shape: edgedb_protocol::codec::ObjectShape,
+                mut fields: Vec<Option<edgedb_protocol::value::Value>>,
+            ) -> anyhow::Result<Self> {
+                // use edgedb_composable_query::EdgedbSetValue;
 
-            Ok(Self {
                 #(
-                    #field_names: EdgedbSetValue::interpret_possibly_missing_required_value(#field_names)?,
-                )*
-            })
-        }
+                    let mut #field_names = None;
+                )*;
 
-        // fn to_edgedb_object(
-        //     &self,
-        // ) -> anyhow::Result<(
-        //     edgedb_protocol::codec::ObjectShape,
-        //     Vec<Option<edgedb_protocol::value::Value>>,
-        // )> {
-        //     todo!()
-        // }
+                for (i, s) in shape.elements.iter().enumerate() {
+                    match s.name.as_str() {
+                        #(
+                            stringify!(#field_names) => {
+                                #field_names = fields[i]
+                                    .take()
+                                    .map(EdgedbSetValue::from_edgedb_set_value)
+                                    .transpose()?;
+                            }
+                        )*
+                        _ => {}
+                    }
+                }
+
+                Ok(Self {
+                    #(
+                        #field_names: EdgedbSetValue::interpret_possibly_missing_required_value(#field_names)?,
+                    )*
+                })
+            }
+        }
     })
 }
 
@@ -82,4 +81,44 @@ fn derive_edgedb_object_for_test(
     let item = syn::parse2::<DeriveInput>(item)?;
 
     derive_edgedb_object_impl(item)
+}
+
+#[cfg(test)]
+mod test {
+    use proc_macro2::TokenStream;
+    use quote::quote;
+
+    use super::derive_edgedb_object_for_test;
+
+    fn on_one_quote(input: TokenStream) -> String {
+        let out = derive_edgedb_object_for_test(input).unwrap();
+
+        let s = out.to_string();
+        let as_file = match syn::parse_file(&s) {
+            Ok(f) => f,
+            Err(e) => {
+                println!("{}", s);
+                panic!("failed to parse output: {}", e);
+            }
+        };
+
+        prettyplease::unparse(&as_file)
+    }
+
+    #[test]
+    fn insta_test_tuple_direct() {
+        let input = quote! {
+
+            #[derive(Debug, PartialEq, EdgedbObject)]
+            struct ExamplImplStruct {
+                a: String,
+                b: Option<String>,
+            }
+
+        };
+
+        let formatted = on_one_quote(input);
+
+        insta::assert_snapshot!(formatted);
+    }
 }

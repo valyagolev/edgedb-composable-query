@@ -19,7 +19,7 @@ macro_rules! impl_prim {
                 fn from_edgedb_val(value: Value) -> Result<Self> {
                     match value {
                         Value::$v(v) => Ok(v),
-                        _ => Err(anyhow::anyhow!("expected {}", stringify!($v))),
+                        v => Err(anyhow::anyhow!("expected {}, got {:?}", stringify!($v), v)),
                     }
                 }
 

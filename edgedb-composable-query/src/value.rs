@@ -156,8 +156,6 @@ impl<T: EdgedbValue> EdgedbSetValue for Vec<T> {
     ) -> Result<Self> {
         let val = client.query::<Value, _>(q, &args.to_query_args()?).await?;
 
-        dbg!(&val);
-
         let val = val
             .into_iter()
             .map(|val| T::from_edgedb_value(val))

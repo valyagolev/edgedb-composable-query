@@ -5,8 +5,8 @@ use crate::{prim::EdgedbPrim, value::EdgedbValue, EdgedbObject};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Ref<T: EdgedbObject> {
-    id: Uuid,
-    known_value: Option<T>,
+    pub id: Uuid,
+    pub known_value: Option<T>,
 }
 
 impl<T: EdgedbObject> EdgedbValue for Ref<T> {
