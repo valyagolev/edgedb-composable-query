@@ -50,7 +50,7 @@ mod test {
     async fn test_me() {
         let conn = edgedb_tokio::create_client().await.unwrap();
 
-        let res = query::<super::AllInner>(conn, (1usize,)).await.unwrap();
+        let res = query::<super::AllInner>(conn, (1,)).await.unwrap();
 
         dbg!(res);
     }
