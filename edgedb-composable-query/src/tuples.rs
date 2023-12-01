@@ -25,6 +25,7 @@ macro_rules! impl_tuple {
             // const EXPECTED_CARDINALITY: edgedb_protocol::server_message::Cardinality =
             //     edgedb_protocol::server_message::Cardinality::One;
 
+            #[allow(unused_parens)] // not sure why
             type NativeArgType = ($(<$name as EdgedbValue>::NativeArgType),+);
 
             fn from_edgedb_value(value: edgedb_protocol::value::Value) -> anyhow::Result<Self> {

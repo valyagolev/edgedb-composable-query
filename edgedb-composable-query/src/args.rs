@@ -106,34 +106,18 @@ mod test {
     async fn some_queries() -> anyhow::Result<()> {
         let conn = edgedb_tokio::create_client().await?;
 
-        // assert_eq!(query::<i64, _>(&conn, "select 7*8", ()).await?, 56);
-
         assert_eq!(
             query::<ExamplImplStruct, _>(
                 &conn,
-                "select {a:=<str>$0,b:=<str>{}}",
-                ("hi".to_owned(),)
+                "select { a := <str>$0, b := <str><int32>$1 }",
+                ("hi".to_owned(), 3)
             )
             .await?,
             ExamplImplStruct {
                 a: "hi".to_string(),
-                b: None
+                b: Some("3".to_string())
             }
         );
-
-        // assert_eq!(
-        //     query::<ExamplImplStruct, _>(&conn, "select {a:='aaa',b:=<str>{'cc'}}", ()).await?,
-        //     ExamplImplStruct {
-        //         a: "aaa".to_string(),
-        //         b: Some("cc".to_string())
-        //     }
-        // );
-
-        // assert!(
-        //     query::<ExamplImplStruct, _>(&conn, "select {a:='aaa',b:=<str>{'cc', 'dd'}}", ())
-        //         .await
-        //         .is_err()
-        // );
 
         Ok(())
     }
