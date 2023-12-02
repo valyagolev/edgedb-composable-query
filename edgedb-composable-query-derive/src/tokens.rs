@@ -10,9 +10,9 @@ use syn::{
 };
 
 use crate::{
+    opts::ComposableQueryReturn,
     query::{Params, Query, QueryVar, With},
     selector::QuerySelector,
-    ComposableQueryOpts, ComposableQueryReturn,
 };
 use strum_macros::IntoStaticStr;
 

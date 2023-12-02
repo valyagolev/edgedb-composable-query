@@ -66,7 +66,7 @@ impl ToTokens for Params {
                 fmt.write_fmt(format_args!(
                     "\t{} := {}{},\n",
                     #name,
-                    <#ty as ::edgedb_composable_query::AsEdgedbVar>::type_cast(),
+                    <#ty as ::edgedb_composable_query::EdgedbArgs>::type_cast(),
                     args[#name]
                 ))?;
             })
@@ -161,7 +161,7 @@ impl ToTokens for Query {
                 args: &::std::collections::HashMap<&str, String>
             ) -> Result<(), ::std::fmt::Error> {
                 use ::edgedb_composable_query::itertools::Itertools;
-                use ::edgedb_composable_query::ComposableQuerySelector;
+                use ::edgedb_composable_query::EdgedbComposableSelector;
 
                 #inner
 

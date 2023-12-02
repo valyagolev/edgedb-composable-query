@@ -3,7 +3,7 @@ source: edgedb-composable-query-derive/src/lib.rs
 assertion_line: 250
 expression: formatted
 ---
-impl ::edgedb_composable_query::AsEdgedbVar for Inner {
+impl ::edgedb_composable_query::EdgedbArgs for Inner {
     const EDGEDB_TYPE_NAME: Option<&'static str> = None;
     const IS_OPTIONAL: bool = false;
     fn as_query_arg(&self) -> ::edgedb_protocol::value::Value {
@@ -14,20 +14,20 @@ impl ::edgedb_composable_query::AsEdgedbVar for Inner {
         todo!();
     }
 }
-impl ::edgedb_composable_query::ComposableQuerySelector for Inner {
+impl ::edgedb_composable_query::EdgedbComposableSelector for Inner {
     const RESULT_TYPE: ::edgedb_composable_query::ComposableQueryResultKind = ::edgedb_composable_query::ComposableQueryResultKind::Selector;
     fn format_selector(fmt: &mut impl ::std::fmt::Write) -> Result<(), std::fmt::Error> {
         use ::edgedb_composable_query::itertools::Itertools;
         fmt.write_fmt(
             format_args!(
                 "{{\n\t{}\n}}", [("id", { let mut buf = String::new(); < Uuid as
-                ::edgedb_composable_query::ComposableQuerySelector > ::format_subquery(&
+                ::edgedb_composable_query::EdgedbComposableSelector > ::format_subquery(&
                 mut buf) ?; ::edgedb_composable_query::query_add_indent(& buf) }),
                 ("opt", { let mut buf = String::new(); < Option < String > as
-                ::edgedb_composable_query::ComposableQuerySelector > ::format_subquery(&
+                ::edgedb_composable_query::EdgedbComposableSelector > ::format_subquery(&
                 mut buf) ?; ::edgedb_composable_query::query_add_indent(& buf) }),
                 ("req", { let mut buf = String::new(); < String as
-                ::edgedb_composable_query::ComposableQuerySelector > ::format_subquery(&
+                ::edgedb_composable_query::EdgedbComposableSelector > ::format_subquery(&
                 mut buf) ?; ::edgedb_composable_query::query_add_indent(& buf) }),
                 ("strlen", format!(" := ({})", "len(.req)".to_string()))].map(| (n, v) |
                 format!("{}{}", n, v)).join:: < & str > (",\n\t")

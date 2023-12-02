@@ -14,14 +14,6 @@ mod query;
 mod selector;
 mod tokens;
 
-#[derive(Debug, FromDeriveInput)]
-#[darling(forward_attrs(allow, doc, cfg, params, with, var, select, direct))]
-struct ComposableQueryOpts {
-    ident: syn::Ident,
-    attrs: Vec<syn::Attribute>,
-    data: ast::Data<util::Ignored, ComposableQueryReturn>,
-}
-
 fn derive_composable_query_impl(item: DeriveInput) -> darling::Result<proc_macro2::TokenStream> {
     let selector_impl = derive_composable_query_selector_impl(item.clone(), false)?;
 
@@ -40,57 +32,6 @@ fn derive_composable_query_impl(item: DeriveInput) -> darling::Result<proc_macro
     })
 }
 
-fn derive_composable_query_selector_impl(
-    item: DeriveInput,
-    selector_only: bool,
-) -> darling::Result<proc_macro2::TokenStream> {
-    let item = ComposableQueryOpts::from_derive_input(&item)?;
-    let mut attribs = ComposableQueryAttribute::from_attrs(&item.attrs)?;
-
-    if selector_only {
-        attribs.push(ComposableQueryAttribute::Select(QueryVar::Var(
-            "".to_string(),
-        )));
-    }
-
-    let query = ComposableQueryAttribute::into_query(attribs, &item.data)?;
-    let selector = &query.result;
-    let ident = &item.ident;
-
-    let result_type = selector.as_composable_query_result_type();
-
-    Ok(quote! {
-        impl ::edgedb_composable_query::AsEdgedbVar for #ident {
-            const EDGEDB_TYPE_NAME: Option<&'static str> = None;
-            const IS_OPTIONAL: bool = false;
-
-            fn as_query_arg(&self) -> ::edgedb_protocol::value::Value {
-                // (*self).into()
-                // dbg!(self);
-                todo!("1");
-            }
-
-            fn from_query_result(t: ::edgedb_protocol::value::Value) -> Self {
-                dbg!(&t);
-                todo!("2");
-            }
-        }
-
-        impl ::edgedb_composable_query::ComposableQuerySelector for #ident {
-            const RESULT_TYPE: ::edgedb_composable_query::ComposableQueryResultKind =
-                #result_type;
-
-            fn format_selector(fmt: &mut impl ::std::fmt::Write) -> Result<(), std::fmt::Error> {
-                use ::edgedb_composable_query::itertools::Itertools;
-
-                #selector
-
-                Ok(())
-            }
-        }
-    })
-}
-
 #[cfg(test)]
 fn derive_composable_query_for_test(
     item: proc_macro2::TokenStream,
@@ -98,15 +39,6 @@ fn derive_composable_query_for_test(
     let item = syn::parse2::<DeriveInput>(item)?;
 
     derive_composable_query_impl(item)
-}
-
-#[cfg(test)]
-fn derive_composable_query_selector_for_test(
-    item: proc_macro2::TokenStream,
-) -> darling::Result<proc_macro2::TokenStream> {
-    let item = syn::parse2::<DeriveInput>(item)?;
-
-    derive_composable_query_selector_impl(item, true)
 }
 
 #[proc_macro_derive(ComposableQuery, attributes(params, with, var, select, direct))]
@@ -119,7 +51,7 @@ pub fn derive_composable_query(item: proc_macro::TokenStream) -> proc_macro::Tok
     }
 }
 
-#[proc_macro_derive(ComposableQuerySelector, attributes(params, with, var))]
+#[proc_macro_derive(EdgedbComposableSelector, attributes(params, with, var))]
 pub fn derive_composable_query_selector(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let item = syn::parse_macro_input!(item as DeriveInput);
 
@@ -233,7 +165,7 @@ mod test {
     fn insta_test_struct_selector() {
         let input = quote! {
 
-            #[derive(ComposableQuerySelector)]
+            #[derive(EdgedbComposableSelector)]
             struct Inner {
                 id: Uuid,
                 opt: Option<String>,

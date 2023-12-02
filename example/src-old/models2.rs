@@ -1,7 +1,7 @@
-use edgedb_composable_query_derive::{ComposableQuery, ComposableQuerySelector};
+use edgedb_composable_query_derive::{ComposableQuery, EdgedbComposableSelector};
 use edgedb_protocol::model::Uuid;
 
-#[derive(ComposableQuerySelector, Debug)]
+#[derive(EdgedbComposableSelector, Debug)]
 struct Inner {
     id: Uuid,
     opt: Option<String>,
@@ -28,7 +28,7 @@ struct Insert(Inner);
 
 #[cfg(test)]
 mod test {
-    use edgedb_composable_query::{query, ComposableQuery, ComposableQuerySelector};
+    use edgedb_composable_query::{query, ComposableQuery, EdgedbComposableSelector};
 
     #[test]
     fn show_me() {

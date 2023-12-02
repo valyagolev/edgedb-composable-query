@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::Type;
 
-use crate::{fields::ComposableQueryReturn, query::QueryVar};
+use crate::{opts::ComposableQueryReturn, query::QueryVar};
 
 #[derive(Debug)]
 pub enum SelectorValue {
@@ -70,7 +70,7 @@ impl ToTokens for QuerySelector {
                                 n,
                                 quote! {{
                                     let mut buf = String::new();
-                                    <#ty as ::edgedb_composable_query::ComposableQuerySelector>::format_subquery(&mut buf)?;
+                                    <#ty as ::edgedb_composable_query::EdgedbComposableSelector>::format_subquery(&mut buf)?;
 
                                     ::edgedb_composable_query::query_add_indent(&buf)
                                 }},
@@ -126,7 +126,7 @@ impl ToTokens for QuerySelector {
                     //     #direct
                     // )?;
 
-                    <#ty as ::edgedb_composable_query::ComposableQuerySelector>::format_selector( fmt)?;
+                    <#ty as ::edgedb_composable_query::EdgedbComposableSelector>::format_selector( fmt)?;
                 });
             }
         };

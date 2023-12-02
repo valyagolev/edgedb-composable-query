@@ -1,18 +1,36 @@
-1. macro for a struct to convert To and From an Object (with ObjectShape...)
-    object *itself* doesn't have a cardinality, but the fields do
-    so each field....
+1. we need a EdgedbComposableSelector trait
 
-        field: Option<T>
-    how do we get cardinality from here?
+        pub trait EdgedbComposableSelector {
+            const RESULT_TYPE: ComposableQueryResultKind;
 
-        struct SomeStruct {fields};
+            fn format_selector(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error>;
 
-        trait FromObject;
-        impl FromObject for SomeStruct;
+            fn format_subquery(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error>;
+        }
 
-        trait FromObjectSet: HasCardinality;
-        impl FromObjectSet for SomeStruct;
-        impl<T> FromObjectSet for Option<T> {}
-        impl<T> FromObjectSet for Vec<T> {}
-        
-2. for a query, we want to have a default cardinality
+    I already have it...
+
+2. I think maybe we should expose queries stuff in runtime? maybe later. i have a lot written already
+
+3. so we need a EdgedbComposableQuery: EdgedbComposableSelector trait
+    should it depend on EdgedbObject ?.. i think not
+
+
+        pub trait ComposableQuery: EdgedbComposableSelector {
+            const ARG_NAMES: &'static [&'static str];
+
+            type ArgTypes: EdgedbArgs;    
+                // EdgebArgs ???? not sure? i mean if it's composable...
+                // no it still needs to be EdgedbArgs, a tuple
+
+            type ReturnType: EdgedbArgs;  // EdgedbObject ... actually EdgedbSetValue 
+
+            fn format_query(
+                fmt: &mut impl std::fmt::Write,
+                args: &::std::collections::HashMap<&str, String>,
+            ) -> Result<(), std::fmt::Error>;
+
+            fn query() -> String {}
+        }
+
+4. and then docs and other crap. actually i should start with examples!

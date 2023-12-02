@@ -1,19 +1,21 @@
 //! # edgedb-composable-query
 //!
-//! Beware: it's a work-in-progress.
+//! Query arbitrary structs from EdgeDB. Compose queries of arbitrary complexity.
 //!
-//! Currently, a macro is implemented that allows you to query arbitrary rust structs,
-//! converting types automatically.
-//!
-//! I'm working on a way to specify query through the struct attributes.
-//!
-//! It's pre-0.1 software. It has some todo!()'s in it, in places
-//! where I don't have a final decision on the semantics yet.
+//! Beware: it's very much a work-in-progress. Pre-0.1. It's messy,
+//! there're todo!()'s in the code, etc. I'm still figuring out the semantics.
 //! If you're interested in this working for your use-cases, please
-//! try it and file the issues at: <https://github.com/valyagolev/edgedb-composable-query/issues>
-//! But don't use it seriously yet; it *will* change the API.
+//! try it and file the issues at: <https://github.com/valyagolev/edgedb-composable-query/issues>.
+//! But don't use it seriously yet; it might panic, and *will* change the API.
 //!
-//! # Examples
+//! Two major parts of the crate.
+//!
+//! 1. A set of tools, around the [`EdgedbObject`] derivable trait, that allow you to query
+//! arbitrary rust structs from EdgeDB, converting types automatically. See examples below.
+//! 2. A set of tools, around the [`composable::EdgedbComposableQuery`] derivable trait, that allow you express
+//! complex, composable queries through Rust structs and attributes. See docs and examples in the [composable] submodule.
+//!
+//! # EdgedbObject Examples
 //!
 //! If you have this schema:
 //!
@@ -31,7 +33,7 @@
 //! }
 //! ```
 //!
-//! Here're some ways to use this crate:
+//! Here're some of the ways to use `EdgedbObject`:
 //!
 //! ```
 //! # tokio_test::block_on(async {
@@ -180,6 +182,7 @@ mod args;
 pub use args::EdgedbQueryArgs;
 mod prim;
 pub use prim::{EdgedbJson, EdgedbPrim};
+pub mod composable;
 mod refs;
 mod tuples;
 mod value;

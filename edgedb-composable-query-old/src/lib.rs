@@ -20,7 +20,7 @@ pub trait AsPrimitiveEdgedbVar {
     fn from_query_result(t: Value) -> Self;
 }
 
-pub trait AsEdgedbVar {
+pub trait EdgedbArgs {
     const EDGEDB_TYPE_NAME: Option<&'static str>;
     const IS_OPTIONAL: bool;
 
@@ -102,7 +102,7 @@ impl AsPrimitiveEdgedbVar for Uuid {
     }
 }
 
-impl<T: AsPrimitiveEdgedbVar> AsEdgedbVar for T {
+impl<T: AsPrimitiveEdgedbVar> EdgedbArgs for T {
     const EDGEDB_TYPE_NAME: Option<&'static str> =
         Some(<T as AsPrimitiveEdgedbVar>::EDGEDB_TYPE_NAME);
     const IS_OPTIONAL: bool = false;
@@ -116,7 +116,7 @@ impl<T: AsPrimitiveEdgedbVar> AsEdgedbVar for T {
     }
 }
 
-impl<T: AsPrimitiveEdgedbVar> AsEdgedbVar for Option<T> {
+impl<T: AsPrimitiveEdgedbVar> EdgedbArgs for Option<T> {
     const EDGEDB_TYPE_NAME: Option<&'static str> =
         Some(<T as AsPrimitiveEdgedbVar>::EDGEDB_TYPE_NAME);
     const IS_OPTIONAL: bool = true;
@@ -137,7 +137,7 @@ impl<T: AsPrimitiveEdgedbVar> AsEdgedbVar for Option<T> {
     }
 }
 
-impl<T: AsPrimitiveEdgedbVar> ComposableQuerySelector for T {
+impl<T: AsPrimitiveEdgedbVar> EdgedbComposableSelector for T {
     const RESULT_TYPE: ComposableQueryResultKind = ComposableQueryResultKind::Field;
 
     fn format_selector(_fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
@@ -149,7 +149,7 @@ impl<T: AsPrimitiveEdgedbVar> ComposableQuerySelector for T {
     }
 }
 
-impl<T: ComposableQuerySelector> ComposableQuerySelector for Option<T> {
+impl<T: EdgedbComposableSelector> EdgedbComposableSelector for Option<T> {
     const RESULT_TYPE: ComposableQueryResultKind = ComposableQueryResultKind::Field;
 
     fn format_selector(_fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
@@ -167,7 +167,7 @@ pub enum ComposableQueryResultKind {
     FreeObject,
 }
 
-pub trait ComposableQuerySelector {
+pub trait EdgedbComposableSelector {
     const RESULT_TYPE: ComposableQueryResultKind;
 
     fn format_selector(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error>;
@@ -185,7 +185,7 @@ pub trait ComposableQuerySelector {
     }
 }
 
-impl<T: ComposableQuerySelector> ComposableQuerySelector for Vec<T> {
+impl<T: EdgedbComposableSelector> EdgedbComposableSelector for Vec<T> {
     const RESULT_TYPE: ComposableQueryResultKind = T::RESULT_TYPE;
 
     fn format_selector(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
@@ -193,7 +193,7 @@ impl<T: ComposableQuerySelector> ComposableQuerySelector for Vec<T> {
     }
 }
 
-impl AsEdgedbVar for () {
+impl EdgedbArgs for () {
     const EDGEDB_TYPE_NAME: Option<&'static str> = None;
 
     const IS_OPTIONAL: bool = false;
@@ -207,7 +207,7 @@ impl AsEdgedbVar for () {
     }
 }
 
-impl<T1: AsEdgedbVar> AsEdgedbVar for (T1,) {
+impl<T1: EdgedbArgs> EdgedbArgs for (T1,) {
     const EDGEDB_TYPE_NAME: Option<&'static str> = None; // todo
 
     const IS_OPTIONAL: bool = false;
@@ -222,7 +222,7 @@ impl<T1: AsEdgedbVar> AsEdgedbVar for (T1,) {
     }
 }
 
-impl<T1: AsEdgedbVar, T2: AsEdgedbVar> AsEdgedbVar for (T1, T2) {
+impl<T1: EdgedbArgs, T2: EdgedbArgs> EdgedbArgs for (T1, T2) {
     const EDGEDB_TYPE_NAME: Option<&'static str> = None; // todo
 
     const IS_OPTIONAL: bool = false;
@@ -233,34 +233,6 @@ impl<T1: AsEdgedbVar, T2: AsEdgedbVar> AsEdgedbVar for (T1, T2) {
 
     fn from_query_result(t: Value) -> Self {
         todo!()
-    }
-}
-
-pub trait ComposableQuery: ComposableQuerySelector {
-    const ARG_NAMES: &'static [&'static str];
-
-    type ArgTypes: AsEdgedbVar;
-    type ReturnType: AsEdgedbVar;
-
-    fn format_query(
-        fmt: &mut impl std::fmt::Write,
-        args: &::std::collections::HashMap<&str, String>,
-    ) -> Result<(), std::fmt::Error>;
-
-    fn query() -> String {
-        let mut buf = String::new();
-        // let args = (0..Self::ARG_NAMES.len())
-        //     .map(|i| (format!("${}", i)))
-        //     .collect();
-
-        let args = Self::ARG_NAMES
-            .iter()
-            .enumerate()
-            .map(|(i, n)| (*n, format!("${i}")))
-            .collect();
-
-        Self::format_query(&mut buf, &args).unwrap();
-        buf
     }
 }
 
