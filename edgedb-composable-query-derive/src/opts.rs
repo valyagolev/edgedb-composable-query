@@ -24,7 +24,7 @@ pub struct ComposableQueryOpts {
 
 impl FromField for ComposableQueryReturn {
     fn from_field(field: &syn::Field) -> darling::Result<Self> {
-        let ident = field.ident.clone();
+        let _ident = field.ident.clone();
 
         let ty = field.ty.clone();
 

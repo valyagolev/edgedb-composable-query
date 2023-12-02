@@ -59,7 +59,7 @@ impl QuerySelector {
 impl ToTokens for QuerySelector {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            QuerySelector::Selector(fr, vals) => {
+            QuerySelector::Selector(_fr, vals) => {
                 let (names, vars) = vals
                     .iter()
                     .map(|(n, v)| match v {
@@ -120,7 +120,7 @@ impl ToTokens for QuerySelector {
             //         ))?;
             //     });
             // }
-            QuerySelector::Direct(direct, ty) => {
+            QuerySelector::Direct(_direct, ty) => {
                 tokens.append_all(quote! {
                     // fmt.write_str(
                     //     #direct

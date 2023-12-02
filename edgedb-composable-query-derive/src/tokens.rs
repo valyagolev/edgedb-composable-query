@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use darling::{ast, error::Accumulator, util, Error};
 use itertools::Itertools;
 
-use strum_macros::{EnumDiscriminants, EnumTryAs};
+use strum_macros::EnumTryAs;
 use syn::{
     parse::Parse, punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Expr, FnArg,
     LitStr, MetaList, Pat, Type,
@@ -14,7 +14,6 @@ use crate::{
     query::{Params, Query, QueryVar, With},
     selector::QuerySelector,
 };
-use strum_macros::IntoStaticStr;
 
 #[derive(Debug, EnumTryAs, Clone)]
 pub enum ComposableQueryAttribute {
@@ -31,7 +30,7 @@ impl ComposableQueryAttribute {
         attrs: &'a Vec<Self>,
         unwrapper: impl Fn(&'a Self) -> Option<T> + 'a,
     ) -> impl Iterator<Item = T> + 'a {
-        attrs.into_iter().filter_map(unwrapper)
+        attrs.iter().filter_map(unwrapper)
     }
 
     fn by_discr_at_most_one<'a, T>(
@@ -45,7 +44,7 @@ impl ComposableQueryAttribute {
         match res {
             Ok(Some(a)) => Some(a),
             Ok(None) => None,
-            Err(e) => {
+            Err(_e) => {
                 errors.push(Error::custom(format!(
                     "expected at most one #[{name}] attribute",
                 )));
@@ -124,11 +123,9 @@ impl ComposableQueryAttribute {
                 */
 
                 let selector = direct
-                    .map(|d| QueryVar::Var(d))
+                    .map(QueryVar::Var)
                     .or(selector)
-                    .ok_or_else(|| {
-                        "expected #[select] or #[direct] attribute for wrapper structs"
-                    })?;
+                    .ok_or({ "expected #[select] or #[direct] attribute for wrapper structs" })?;
 
                 let name = "_selector".to_string();
 
@@ -158,17 +155,17 @@ impl ComposableQueryAttribute {
                     .collect_vec();
 
                 if let Some(s) = selector_from.as_simple_name_or_ref() {
-                    return Ok((QuerySelector::Selector(s.to_owned(), vars_to_select)));
+                    return Ok(QuerySelector::Selector(s.to_owned(), vars_to_select));
                 }
 
                 let name = "_selector".to_string();
 
                 withs.push(With(name.clone(), selector_from.clone()));
 
-                return Ok((QuerySelector::Selector(name, vars_to_select)));
+                return Ok(QuerySelector::Selector(name, vars_to_select));
             }
 
-            Ok((QuerySelector::Object(
+            Ok(QuerySelector::Object(
                 fields
                     .iter()
                     .map(|f| {
@@ -180,7 +177,7 @@ impl ComposableQueryAttribute {
                         (fname.clone(), f.var.clone().unwrap_or(QueryVar::Var(fname)))
                     })
                     .collect_vec(),
-            )))
+            ))
         })();
 
         let result = match result {

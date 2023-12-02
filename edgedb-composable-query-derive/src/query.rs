@@ -1,11 +1,10 @@
 use std::collections::HashMap;
-use std::default;
 
 use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::quote;
 use quote::{ToTokens, TokenStreamExt};
-use syn::{Path, Token, Type};
+use syn::{Path, Type};
 
 use crate::selector::QuerySelector;
 
