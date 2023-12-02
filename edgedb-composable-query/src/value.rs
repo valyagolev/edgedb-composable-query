@@ -1,6 +1,5 @@
 pub use crate::Result;
 use crate::{args::EdgedbQueryArgs, EdgedbObject};
-
 use edgedb_tokio::Client;
 pub use nonempty::{nonempty, NonEmpty};
 

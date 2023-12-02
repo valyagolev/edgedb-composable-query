@@ -4,7 +4,6 @@ use edgedb_protocol::model::{Json, Uuid};
 use edgedb_protocol::value::{self, Value};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use serde_json::to_string;
 
 pub trait EdgedbPrim: Sized {
     fn from_edgedb_val(value: Value) -> Result<Self>;
@@ -57,6 +56,7 @@ impl_prim! {
     Uuid => Uuid
 }
 
+/// Wrapper around your type to pass them as JSON query arguments
 pub struct EdgedbJson<T: DeserializeOwned + Serialize>(pub T);
 
 impl<T: DeserializeOwned + Serialize> EdgedbPrim for EdgedbJson<T> {
@@ -69,7 +69,9 @@ impl<T: DeserializeOwned + Serialize> EdgedbPrim for EdgedbJson<T> {
     }
 
     fn to_edgedb_val(self) -> Result<Value> {
-        let val = to_string(&self.0)?;
+        let val = serde_json::to_string(&self.0)?;
+
+        // safety: we just serialized this value
         Ok(Value::Json(unsafe { Json::new_unchecked(val) }))
     }
 }
