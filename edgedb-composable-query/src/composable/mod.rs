@@ -60,6 +60,21 @@
 //! #[select("select Inner limit 1")]
 //! struct OneInnerBySelector(InnerSelector);
 //!
+//! assert!(
+//!     run_query::<OneInnerBySelector>(&conn, ()).await.is_ok()
+//! );
+//!
+//! #[derive(Debug, PartialEq, Eq, EdgedbComposableQuery)]
+//! #[params(id: Uuid)]
+//! #[select("select Inner filter .id = id")]
+//! struct OneInnerBySelectorById(Option<InnerSelector>);
+//!
+//! assert!(
+//!     run_query::<OneInnerBySelectorById>(&conn, (
+//!         Uuid::parse_str("9be70fb0-8240-11ee-9175-cff95b46d325").unwrap(),
+//!     )).await.unwrap().is_some()
+//! );
+//!
 //! #[derive(Debug, PartialEq, Eq, EdgedbComposableQuery)]
 //! #[select("select Inner limit 10")]
 //! struct ManyInnersBySelector(Vec<InnerSelector>);
@@ -70,7 +85,7 @@
 //! #[derive(Debug, PartialEq, Eq, EdgedbObject,
 //!          EdgedbComposableSelector, EdgedbComposableQuery)]
 //! #[params(id: Uuid)]
-//! #[select("select Outer where .id = id limit 1")]
+//! #[select("select Outer filter .id = id limit 1")]
 //! struct OuterByIdQuery {
 //!     inner: Option<Ref<InnerSelector>>,
 //!
@@ -96,6 +111,7 @@ pub enum ComposableQueryResultKind {
     FreeObject,
 }
 
+/// Derivable trait. Must have named fields, each is either another selector, or a primitive, or a `Vec/Option/NonEmpty` of those.
 pub trait EdgedbComposableSelector {
     const RESULT_TYPE: ComposableQueryResultKind;
 
@@ -165,6 +181,7 @@ impl<T: EdgedbComposableSelector + EdgedbObject> EdgedbComposableSelector for Re
     }
 }
 
+/// Derivable trait. Can have parameters. Either an object with named fields, or can be a wrapper around a selector, or `Option<selector>`, or `Vec<selector>`, or `NonEmpty<selector>``.
 pub trait EdgedbComposableQuery {
     const ARG_NAMES: &'static [&'static str];
 
@@ -193,6 +210,7 @@ pub trait EdgedbComposableQuery {
     }
 }
 
+/// use this to run an [`EdgedbComposableQuery`]
 pub async fn run_query<T: EdgedbComposableQuery>(
     client: &Client,
     args: T::ArgTypes,
@@ -234,7 +252,7 @@ mod test {
 
     #[derive(Debug, PartialEq, Eq, EdgedbComposableQuery)]
     #[params(id: Uuid)]
-    #[select("select Inner where .id = id")]
+    #[select("select Inner filter .id = id")]
     struct OneInnerBySelectorById(InnerSelector);
 
     #[derive(Debug, PartialEq, Eq, EdgedbComposableQuery)]
@@ -293,6 +311,7 @@ mod test {
         insta::assert_snapshot!(OuterQueryWithRef::query());
 
         insta::assert_snapshot!(OneInnerBySelector::query());
+        insta::assert_snapshot!(OneInnerBySelectorById::query());
         insta::assert_snapshot!(ManyInnersBySelector::query());
     }
 }

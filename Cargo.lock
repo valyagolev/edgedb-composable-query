@@ -354,10 +354,10 @@ checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
 
 [[package]]
 name = "edgedb-composable-query"
-version = "0.0.2"
+version = "0.0.4"
 dependencies = [
  "anyhow",
- "edgedb-composable-query-derive",
+ "edgedb-composable-query-derive 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "edgedb-protocol",
  "edgedb-tokio",
  "insta",
@@ -371,7 +371,7 @@ dependencies = [
 
 [[package]]
 name = "edgedb-composable-query-derive"
-version = "0.0.2"
+version = "0.0.4"
 dependencies = [
  "darling",
  "insta",
@@ -383,6 +383,21 @@ dependencies = [
  "strum_macros",
  "syn 2.0.39",
  "trybuild",
+]
+
+[[package]]
+name = "edgedb-composable-query-derive"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe272ca15ca98ea8dfcfa19723ebbf31b14341018ccb635f7d98bfd570aa85f4"
+dependencies = [
+ "darling",
+ "itertools",
+ "proc-macro2",
+ "quote",
+ "strum",
+ "strum_macros",
+ "syn 2.0.39",
 ]
 
 [[package]]
@@ -496,7 +511,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "edgedb-composable-query",
- "edgedb-composable-query-derive",
+ "edgedb-composable-query-derive 0.0.4",
  "edgedb-protocol",
  "edgedb-tokio",
  "tokio",

@@ -63,7 +63,7 @@ impl ToTokens for Params {
         for (name, ty) in self.0.iter() {
             tokens.append_all(quote! {
                 fmt.write_fmt(format_args!(
-                    "\t{} := {}{},\n",
+                    "\t{} := <{}>{},\n",
                     #name,
                     <#ty as ::edgedb_composable_query::EdgedbPrim>::TYPE_CAST,
                     args[#name]

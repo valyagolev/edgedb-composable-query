@@ -4,7 +4,7 @@ assertion_line: 311
 expression: "OneInnerBySelectorById::query()"
 ---
 with
-	id := uuid$0,
+	id := <uuid>$0,
 	_selector := (select Inner where .id = id),
 select (_selector) {
 	req := (.req),
