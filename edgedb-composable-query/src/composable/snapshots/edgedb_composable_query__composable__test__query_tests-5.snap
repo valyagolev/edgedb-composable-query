@@ -1,0 +1,11 @@
+---
+source: edgedb-composable-query/src/composable/mod.rs
+assertion_line: 275
+expression: "ManyInnersBySelector::query()"
+---
+with
+	_selector := (select Inner limit 10),
+select (_selector) {
+	req := (.req),
+	opt := (.opt),
+}

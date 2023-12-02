@@ -1,13 +1,13 @@
-use edgedb_composable_query_derive::ComposableQuery;
+use edgedb_composable_query_derive::EdgedbComposableQuery;
 
-#[derive(ComposableQuery)]
+#[derive(EdgedbComposableQuery)]
 #[params(n: i32, v: String)]
 #[with(calc = "n + 2")]
 struct SomeQuery {
     n: i32,
 }
 
-#[derive(ComposableQuery)]
+#[derive(EdgedbComposableQuery)]
 #[params(n: i32)]
 #[with(inner_res = SomeQuery(n = "n + 5", v = "'whatever'"))]
 struct WrappedQuery {
@@ -17,7 +17,7 @@ struct WrappedQuery {
 
 #[cfg(test)]
 mod test {
-    use edgedb_composable_query::ComposableQuery;
+    use edgedb_composable_query::EdgedbComposableQuery;
 
     #[test]
     fn show_me() {

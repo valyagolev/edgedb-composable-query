@@ -1,0 +1,28 @@
+---
+source: edgedb-composable-query-derive/src/composable_query.rs
+assertion_line: 201
+expression: formatted
+---
+impl ::edgedb_composable_query::composable::EdgedbComposableQuery
+for OneInnerBySelector {
+    const ARG_NAMES: &'static [&'static str] = &[];
+    type ArgTypes = ();
+    type ReturnType = Self;
+    fn format_query(
+        fmt: &mut impl ::std::fmt::Write,
+        args: &::std::collections::HashMap<&str, String>,
+    ) -> Result<(), ::std::fmt::Error> {
+        use ::edgedb_composable_query::__itertools::Itertools;
+        use ::edgedb_composable_query::composable::EdgedbComposableSelector;
+        fmt.write_str("with\n")?;
+        fmt.write_fmt(
+            format_args!("\t{} := ({}),\n", "_selector", "select Inner limit 1"),
+        )?;
+        fmt.write_str(&format!("select ({})", "_selector"))?;
+        fmt.write_str(" {\n")?;
+        Self::format_selector(fmt)?;
+        fmt.write_str("\n}")?;
+        Ok(())
+    }
+}
+

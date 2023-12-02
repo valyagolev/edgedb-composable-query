@@ -4,7 +4,9 @@ use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::quote;
 use quote::{ToTokens, TokenStreamExt};
-use syn::Path;
+use syn::{Path, Type};
+
+use crate::selector::QuerySelector;
 
 #[derive(Debug, Clone, Default)]
 pub struct Params(pub Vec<(String, syn::Type)>);
@@ -19,6 +21,19 @@ pub enum QueryVar {
     // SomeSubQuery(k=v, k2=v2)
     // => (with ... select ...)
     Call(Path, HashMap<String, QueryVar>),
+}
+
+// #[derive(Debug)]
+// pub enum QueryResult {
+//     QuerySelector(QuerySelector),
+//     InnerType(Type),
+// }
+
+#[derive(Debug)]
+pub struct Query {
+    pub params: Params,
+    pub withs: Vec<With>,
+    pub result: QuerySelector,
 }
 
 impl QueryVar {
@@ -42,34 +57,15 @@ impl QueryVar {
     }
 }
 
-#[derive(Debug)]
-pub enum QueryResult {
-    /// select fields from object. requires [select(object)]
-    Selector(String, Vec<QueryVar>),
-    /// default for named-structs: select fields from object. accepts [var(...)]
-    Object(Vec<(String, QueryVar)>),
-    /// todo: default for tuple-structs
-    Tuple(Vec<QueryVar>),
-    /// requires empty struct
-    Direct(QueryVar),
-}
-
-#[derive(Debug)]
-pub struct Query {
-    pub params: Params,
-    pub withs: Vec<With>,
-    pub result: QueryResult,
-}
-
 /// will be code that writes to fmt
 impl ToTokens for Params {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         for (name, ty) in self.0.iter() {
             tokens.append_all(quote! {
                 fmt.write_fmt(format_args!(
-                    "\t{} := <{}>{},\n",
+                    "\t{} := {}{},\n",
                     #name,
-                    <#ty as ::edgedb_composable_query::AsEdgedbVar>::EDGEDB_TYPE,
+                    <#ty as ::edgedb_composable_query::EdgedbPrim>::TYPE_CAST,
                     args[#name]
                 ))?;
             })
@@ -99,9 +95,9 @@ impl ToTokens for QueryVar {
                         let args = [#( #args_kv ),*].into();
                         let mut buf = String::new();
 
-                        <#strct as ::edgedb_composable_query::ComposableQuery>::format_query(&mut buf, &args)?;
+                        <#strct as ::edgedb_composable_query::EdgedbComposableQuery>::format_query(&mut buf, &args)?;
 
-                        ::edgedb_composable_query::query_add_indent(&buf)
+                        ::edgedb_composable_query::__query_add_indent(&buf)
                     }
                 })
             }
@@ -117,62 +113,6 @@ impl ToTokens for With {
         tokens.append_all(quote! {
             fmt.write_fmt(format_args!("\t{} := ({}),\n", #name, #value))?;
         })
-    }
-}
-
-/// will be code that writes to fmt
-impl ToTokens for QueryResult {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self {
-            QueryResult::Selector(fr, vals) => tokens.append_all(quote! {
-                fmt.write_fmt!(
-                    format_args!(
-                        "select {} {{\n\t{}\n}}",
-                        #fr,
-                        #( #vals ),*
-                    )
-                )?;
-            }),
-            QueryResult::Object(mapping) => {
-                let mapping_tuples = mapping.iter().map(|(k, v)| {
-                    quote! {
-                        (#k, #v)
-                    }
-                });
-
-                tokens.append_all(quote! {
-                    fmt.write_fmt(format_args!(
-                        "select {{\n{}\n}}",
-                        [#(#mapping_tuples),*]
-                            .iter()
-                            .map(|(k, v)| format!("\t{k} := ({v}),"))
-                            .join("\n")
-                    ))?;
-                });
-            }
-            QueryResult::Tuple(vars) => {
-                tokens.append_all(quote! {
-                    fmt.write_fmt(format_args!(
-                        "select ({})",
-                        [#( #vars ),*]
-                            .iter()
-                            .map(|v| format!("({})", v))
-                            .join(", ")
-                    ))?;
-                });
-            }
-            QueryResult::Direct(direct) => {
-                tokens.append_all(quote! {
-                    fmt.write_str(
-                        #direct
-                    )?;
-                });
-            }
-        };
-
-        // tokens.append_all(quote! {
-        //     fmt.write_str(#text)?;
-        // })
     }
 }
 
@@ -193,20 +133,53 @@ impl ToTokens for Query {
             }
         }
 
-        self.result.to_tokens(&mut inner);
+        // self.result.to_tokens(&mut inner);
 
-        let argnames = self.params.0.iter().map(|p| p.0.as_str()).collect_vec();
+        let (argnames, argtypes) = self
+            .params
+            .0
+            .iter()
+            .cloned()
+            .unzip::<_, _, Vec<String>, Vec<Type>>();
+
+        let self_type = quote! {Self};
+
+        let (final_selector, final_type) = match &self.result {
+            QuerySelector::Selector(what, _) => (quote! {format!("select ({})", #what)}, self_type),
+            QuerySelector::Object(_) => (quote! {"select "}, self_type),
+            // QuerySelector::Tuple(_) => quote! {"select "},
+            QuerySelector::Direct(what, _ty) => {
+                (quote! {format!("select ({})", #what)}, quote! {#_ty})
+            }
+        };
+
+        let atypes = if argtypes.len() == 0 {
+            quote! {()}
+        } else {
+            quote! {(#( #argtypes ),* ,)}
+        };
 
         tokens.append_all(quote! {
             const ARG_NAMES: &'static [&'static str] = &[#( #argnames ),*];
+
+            type ArgTypes = #atypes;
+            type ReturnType = #final_type;
 
             fn format_query(
                 fmt: &mut impl ::std::fmt::Write,
                 args: &::std::collections::HashMap<&str, String>
             ) -> Result<(), ::std::fmt::Error> {
-                use ::edgedb_composable_query::itertools::Itertools;
+                use ::edgedb_composable_query::__itertools::Itertools;
+                use ::edgedb_composable_query::composable::EdgedbComposableSelector;
 
                 #inner
+
+                fmt.write_str(&#final_selector)?;
+                fmt.write_str(" {\n")?;
+
+                <#final_type as EdgedbComposableSelector>::format_selector(fmt)?;
+
+                fmt.write_str("\n}")?;
 
                 Ok(())
             }

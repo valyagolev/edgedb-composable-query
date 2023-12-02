@@ -1,19 +1,21 @@
 use std::collections::HashMap;
 
-use darling::{ast, util, Error};
+use darling::{ast, error::Accumulator, util, Error};
 use itertools::Itertools;
 
+use strum_macros::EnumTryAs;
 use syn::{
     parse::Parse, punctuated::Punctuated, spanned::Spanned, token::Comma, Attribute, Expr, FnArg,
-    MetaList, Pat,
+    LitStr, MetaList, Pat, Type,
 };
 
 use crate::{
-    query::{Params, Query, QueryResult, QueryVar, With},
-    ComposableQueryReturn,
+    opts::ComposableQueryReturn,
+    query::{Params, Query, QueryVar, With},
+    selector::QuerySelector,
 };
 
-#[derive(Debug)]
+#[derive(Debug, EnumTryAs, Clone)]
 pub enum ComposableQueryAttribute {
     Params(Params),
     With(With),
@@ -24,55 +26,68 @@ pub enum ComposableQueryAttribute {
 }
 
 impl ComposableQueryAttribute {
+    fn by_discr<'a, T>(
+        attrs: &'a Vec<Self>,
+        unwrapper: impl Fn(&'a Self) -> Option<T> + 'a,
+    ) -> impl Iterator<Item = T> + 'a {
+        attrs.iter().filter_map(unwrapper)
+    }
+
+    fn by_discr_at_most_one<'a, T>(
+        errors: &'a mut Accumulator,
+        attrs: &'a Vec<Self>,
+        unwrapper: impl Fn(&'a Self) -> Option<T> + 'a,
+        name: &'static str,
+    ) -> Option<T> {
+        let res = Self::by_discr(attrs, unwrapper).at_most_one();
+
+        match res {
+            Ok(Some(a)) => Some(a),
+            Ok(None) => None,
+            Err(_e) => {
+                errors.push(Error::custom(format!(
+                    "expected at most one #[{name}] attribute",
+                )));
+                None
+            }
+        }
+    }
+
     pub fn into_query(
         attrs: Vec<Self>,
         fields: &ast::Data<util::Ignored, ComposableQueryReturn>,
+        selector_only: bool,
     ) -> darling::Result<Query> {
         let mut errors = darling::Error::accumulator();
 
-        let params = match attrs
-            .iter()
-            .filter(|p| matches!(p, ComposableQueryAttribute::Params(_)))
-            .exactly_one()
-        {
-            Ok(ComposableQueryAttribute::Params(params)) => params.clone(),
-            _ => {
-                errors.push(Error::custom("expected exactly one #[params] attribute"));
+        let params = Self::by_discr_at_most_one(
+            &mut errors,
+            &attrs,
+            ComposableQueryAttribute::try_as_params_ref,
+            "params",
+        )
+        .cloned()
+        .unwrap_or_default();
 
-                Default::default()
-            }
-        };
-
-        let mut withs = attrs
-            .iter()
-            .filter_map(|p| match p {
-                ComposableQueryAttribute::With(w) => Some(w),
-                _ => None,
-            })
+        let mut withs = Self::by_discr(&attrs, ComposableQueryAttribute::try_as_with_ref)
             .cloned()
             .collect::<Vec<_>>();
 
-        let selector = attrs
-            .iter()
-            .filter(|p| matches!(p, ComposableQueryAttribute::Select(_)))
-            .at_most_one();
+        let selector = Self::by_discr_at_most_one(
+            &mut errors,
+            &attrs,
+            ComposableQueryAttribute::try_as_select_ref,
+            "select",
+        )
+        .cloned();
 
-        if selector.is_err() {
-            errors.push(Error::custom("expected at most one #[select] attribute"));
-        }
-
-        let selector = selector.unwrap_or_default();
-
-        let direct = attrs
-            .iter()
-            .filter(|p| matches!(p, ComposableQueryAttribute::Direct(_)))
-            .at_most_one();
-
-        if direct.is_err() {
-            errors.push(Error::custom("expected at most one #[direct] attribute"));
-        }
-
-        let direct = direct.unwrap_or_default();
+        let direct = Self::by_discr_at_most_one(
+            &mut errors,
+            &attrs,
+            ComposableQueryAttribute::try_as_direct_ref,
+            "direct",
+        )
+        .cloned();
 
         if direct.is_some() && selector.is_some() {
             errors.push(Error::custom(
@@ -80,15 +95,18 @@ impl ComposableQueryAttribute {
             ));
         }
 
-        let result: Result<QueryResult, &str> = (|| {
+        let result: Result<QuerySelector, &str> = (|| {
             let ast::Data::Struct(fields) = fields else {
                 return Err("enums are not supported");
             };
 
             if fields.is_empty() {
                 match direct {
-                    Some(ComposableQueryAttribute::Direct(name)) => {
-                        return Ok(QueryResult::Direct(QueryVar::Var(name.clone())))
+                    Some(name) => {
+                        return Ok(QuerySelector::Direct(
+                            QueryVar::Var(name.clone()),
+                            syn::parse2::<Type>(quote::quote! { () }).unwrap(),
+                        ))
                     }
                     _ => {
                         return Err("expected #[direct] attribute for empty structs");
@@ -96,35 +114,72 @@ impl ComposableQueryAttribute {
                 }
             }
 
-            if fields.fields[0].ident.is_none() {
-                todo!("tuple structs");
+            if fields.fields[0].field_name.is_none() {
+                if fields.fields.len() != 1 {
+                    return Err("expected a single unnamed field (todo: tuples?)");
+                }
+
+                /*
+                (select something) (innertype_selector)
+                */
+
+                let selector = direct
+                    .map(QueryVar::Var)
+                    .or(selector)
+                    .ok_or({ "expected #[select] or #[direct] attribute for wrapper structs" })?;
+
+                let name = "_selector".to_string();
+
+                withs.push(With(name.clone(), selector.clone()));
+
+                return Ok(QuerySelector::Direct(
+                    QueryVar::Var(name),
+                    fields.fields[0].ty.clone(),
+                ));
             }
 
             if direct.is_some() {
                 return Err("expected no #[direct] attribute for non-empty structs");
             }
 
-            if let Some(ComposableQueryAttribute::Select(selector_from)) = selector {
+            if let Some(selector_from) = selector {
                 let vars_to_select = fields
                     .iter()
-                    .map(|f| QueryVar::Var(f.ident.as_ref().unwrap().to_string()))
+                    .map(|f| {
+                        (
+                            f.field_name
+                                .clone()
+                                .expect("We thought we have named fields here"),
+                            f.into(),
+                        )
+                    })
                     .collect_vec();
 
                 if let Some(s) = selector_from.as_simple_name_or_ref() {
-                    return Ok(QueryResult::Selector(s.to_owned(), vars_to_select));
+                    return Ok(QuerySelector::Selector(s.to_owned(), vars_to_select));
                 }
 
                 let name = "_selector".to_string();
 
                 withs.push(With(name.clone(), selector_from.clone()));
 
-                return Ok(QueryResult::Selector(name, vars_to_select));
+                return Ok(QuerySelector::Selector(name, vars_to_select));
             }
 
-            Ok(QueryResult::Object(
+            Ok(QuerySelector::Object(
                 fields
                     .iter()
-                    .map(|f| (f.ident.as_ref().unwrap().to_string(), f.var.clone()))
+                    .map(|f| {
+                        let fname = f
+                            .field_name
+                            .as_ref()
+                            .cloned()
+                            .expect("We thought we have named fields here");
+                        (
+                            fname.clone(),
+                            f.var.clone().unwrap_or(QueryVar::Var(format!(".{fname}"))),
+                        )
+                    })
                     .collect_vec(),
             ))
         })();
@@ -142,9 +197,9 @@ impl ComposableQueryAttribute {
         errors.finish()?;
 
         Ok(Query {
+            result,
             params,
             withs,
-            result,
         })
     }
 
@@ -192,8 +247,6 @@ impl ComposableQueryAttribute {
     fn parse_with(item: &MetaList) -> darling::Result<Self> {
         let mut with = None;
 
-        // dbg!(item);
-
         item.parse_nested_meta(|arg| {
             let name = arg.path.require_ident()?.to_string();
             let template = arg.value()?;
@@ -209,6 +262,14 @@ impl ComposableQueryAttribute {
         Ok(Self::With(with))
     }
 
+    fn parse_selector(kind: &str, item: &MetaList) -> darling::Result<Self> {
+        match kind {
+            "select" => Ok(Self::Select(item.parse_args::<QueryVar>()?)),
+            "direct" => Ok(Self::Direct(item.parse_args::<LitStr>()?.value())),
+            _ => unreachable!(),
+        }
+    }
+
     fn from_meta(item: &syn::Meta) -> darling::Result<Option<Self>> {
         let item = item.require_list()?;
         let ident = item.path.require_ident()?.to_string();
@@ -216,6 +277,7 @@ impl ComposableQueryAttribute {
         match &*ident {
             "params" => Self::parse_params(item).map(Some),
             "with" => Self::parse_with(item).map(Some),
+            "select" | "direct" => Self::parse_selector(&ident, item).map(Some),
             _ => Ok(None),
         }
     }

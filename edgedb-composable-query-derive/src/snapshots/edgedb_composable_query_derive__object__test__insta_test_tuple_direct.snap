@@ -1,0 +1,36 @@
+---
+source: edgedb-composable-query-derive/src/object.rs
+assertion_line: 120
+expression: formatted
+---
+impl EdgedbObject for ExamplImplStruct {
+    fn from_edgedb_object(
+        shape: edgedb_protocol::codec::ObjectShape,
+        mut fields: Vec<Option<edgedb_protocol::value::Value>>,
+    ) -> anyhow::Result<Self> {
+        let mut a = None;
+        let mut b = None;
+        for (i, s) in shape.elements.iter().enumerate() {
+            match s.name.as_str() {
+                stringify!(a) => {
+                    a = fields[i]
+                        .take()
+                        .map(EdgedbSetValue::from_edgedb_set_value)
+                        .transpose()?;
+                }
+                stringify!(b) => {
+                    b = fields[i]
+                        .take()
+                        .map(EdgedbSetValue::from_edgedb_set_value)
+                        .transpose()?;
+                }
+                _ => {}
+            }
+        }
+        Ok(Self {
+            a: EdgedbSetValue::interpret_possibly_missing_required_value(a)?,
+            b: EdgedbSetValue::interpret_possibly_missing_required_value(b)?,
+        })
+    }
+}
+

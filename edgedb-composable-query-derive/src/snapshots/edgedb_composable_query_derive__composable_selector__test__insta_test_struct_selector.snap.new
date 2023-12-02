@@ -1,0 +1,20 @@
+---
+source: edgedb-composable-query-derive/src/composable_selector.rs
+assertion_line: 93
+expression: formatted
+---
+impl ::edgedb_composable_query::composable::EdgedbComposableSelector for Inner {
+    const RESULT_TYPE: ::edgedb_composable_query::composable::ComposableQueryResultKind = ::edgedb_composable_query::composable::ComposableQueryResultKind::Selector;
+    fn format_selector(fmt: &mut impl ::std::fmt::Write) -> Result<(), std::fmt::Error> {
+        use ::edgedb_composable_query::__itertools::Itertools;
+        fmt.write_fmt(
+            format_args!(
+                "{}", [("id", ".id"), ("opt", ".opt"), ("req", ".req"), ("strlen",
+                "len(.req)")].iter().map(| (k, v) | format!("\t{k} := ({v}),"))
+                .join("\n")
+            ),
+        )?;
+        Ok(())
+    }
+}
+

@@ -1,0 +1,15 @@
+---
+source: edgedb-composable-query/src/composable/mod.rs
+assertion_line: 271
+expression: "OuterQuery::query()"
+---
+with
+	_selector := (select Outer limit 1),
+select (_selector) {
+	inner: {
+		req := (.req),
+		opt := (.opt),
+	},
+	some_field,
+	other_field
+}

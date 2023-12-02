@@ -1,0 +1,28 @@
+---
+source: edgedb-composable-query-derive/src/composable_query.rs
+assertion_line: 131
+expression: formatted
+---
+impl ::edgedb_composable_query::composable::ComposableQuery for ReshuffleTuple {
+    const ARG_NAMES: &'static [&'static str] = &["n"];
+    type ArgTypes = (i32,);
+    type ReturnType = Self;
+    fn format_query(
+        fmt: &mut impl ::std::fmt::Write,
+        args: &::std::collections::HashMap<&str, String>,
+    ) -> Result<(), ::std::fmt::Error> {
+        use ::edgedb_composable_query::__itertools::Itertools;
+        use ::edgedb_composable_query::composable::EdgedbComposableSelector;
+        fmt.write_str("with\n")?;
+        fmt.write_fmt(
+            format_args!(
+                "\t{} := {}{},\n", "n", < i32 as ::edgedb_composable_query::EdgedbArgs >
+                ::type_cast(), args["n"]
+            ),
+        )?;
+        fmt.write_str(&format!("select ({})", "select User limit 1"))?;
+        Self::format_selector(fmt)?;
+        Ok(())
+    }
+}
+
