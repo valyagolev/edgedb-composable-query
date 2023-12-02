@@ -22,13 +22,13 @@ impl ::edgedb_composable_query::EdgedbComposableSelector for Inner {
             format_args!(
                 "{{\n\t{}\n}}", [("id", { let mut buf = String::new(); < Uuid as
                 ::edgedb_composable_query::EdgedbComposableSelector > ::format_subquery(&
-                mut buf) ?; ::edgedb_composable_query::query_add_indent(& buf) }),
+                mut buf) ?; ::edgedb_composable_query::__query_add_indent(& buf) }),
                 ("opt", { let mut buf = String::new(); < Option < String > as
                 ::edgedb_composable_query::EdgedbComposableSelector > ::format_subquery(&
-                mut buf) ?; ::edgedb_composable_query::query_add_indent(& buf) }),
+                mut buf) ?; ::edgedb_composable_query::__query_add_indent(& buf) }),
                 ("req", { let mut buf = String::new(); < String as
                 ::edgedb_composable_query::EdgedbComposableSelector > ::format_subquery(&
-                mut buf) ?; ::edgedb_composable_query::query_add_indent(& buf) }),
+                mut buf) ?; ::edgedb_composable_query::__query_add_indent(& buf) }),
                 ("strlen", format!(" := ({})", "len(.req)".to_string()))].map(| (n, v) |
                 format!("{}{}", n, v)).join:: < & str > (",\n\t")
             ),

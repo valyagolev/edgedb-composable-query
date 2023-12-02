@@ -5,6 +5,7 @@ pub use nonempty::{nonempty, NonEmpty};
 
 use edgedb_protocol::value::Value;
 
+/// An object or a primitive. For sets, see [`EdgedbSetValue`]. Provided automatically in most cases.
 pub trait EdgedbValue: Sized {
     /// use Value by default
     type NativeArgType;
@@ -13,6 +14,7 @@ pub trait EdgedbValue: Sized {
     // fn to_edgedb_value(self) -> Result<Value>;
 }
 
+/// A value of a particular cardinality (typically it's provided automatically for `T`, `Option<T>`, `Vec<T>` or [`NonEmpty<T>`])
 pub trait EdgedbSetValue: Sized {
     const EXPECTED_CARDINALITY: edgedb_protocol::server_message::Cardinality;
 

@@ -3,6 +3,7 @@ use itertools::Itertools;
 
 use crate::{prim::EdgedbPrim, value::EdgedbValue, EdgedbObject};
 
+/// Basically a `Uuid` and an `Option<T>`. Use this instead of adding `id: Uuid` field to your structs.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Ref<T: EdgedbObject> {
     pub id: Uuid,
@@ -15,15 +16,42 @@ impl<T: EdgedbObject> EdgedbValue for Ref<T> {
     fn from_edgedb_value(value: edgedb_protocol::value::Value) -> anyhow::Result<Self> {
         match value {
             edgedb_protocol::value::Value::Object { shape, mut fields } => {
-                let uuid_i = shape.elements.iter().find_position(|e| e.name == "id").map(|(i, _)| i).ok_or_else(|| anyhow::anyhow!("Expected an object with an 'id' field when deserializing a Ref, got something else"))?;
+                let uuid_i = shape
+                    .elements
+                    .iter()
+                    .find_position(|e| e.name == "id")
+                    .map(|(i, _)| i);
 
-                let id = Uuid::from_edgedb_val(fields[uuid_i].take().ok_or_else(|| anyhow::anyhow!("Expected an object with an 'id' field when deserializing a Ref, got something else"))?)?;
+                let id = uuid_i.and_then(|i| fields[i].take());
+                let id = Uuid::from_edgedb_val(id.ok_or_else(|| anyhow::anyhow!("Expected an object with an 'id' field when deserializing a Ref, got something else"))?)?;
 
-                let known_value = if shape.elements.len() != 1 {
-                    Some(T::from_edgedb_object(shape, fields)?)
-                } else {
-                    None
-                };
+                if shape.elements.len() == 1 {
+                    return Ok(Self {
+                        id,
+                        known_value: None,
+                    });
+                }
+
+                // if shape.elements.len() == 2 {
+                //     let known_value_i = shape
+                //         .elements
+                //         .iter()
+                //         .find_position(|e: &&edgedb_protocol::codec::ShapeElement| {
+                //             e.name == "_known_value"
+                //         })
+                //         .map(|(i, _)| i);
+
+                //     if let Some(known_value_i) = known_value_i {
+                //         let known_value = fields[known_value_i].take();
+                //         let known_value = known_value
+                //             .map(EdgedbValue::from_edgedb_value)
+                //             .transpose()?;
+
+                //         return Ok(Self { id, known_value });
+                //     }
+                // }
+
+                let known_value = Some(T::from_edgedb_object(shape, fields)?);
 
                 Ok(Self { id, known_value })
             }

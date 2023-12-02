@@ -174,7 +174,13 @@
 /// currently anyhow::Result. TODO: make crate's own Result type
 pub use anyhow::Result;
 
-// pub use edg
+#[doc(hidden)]
+pub use itertools as __itertools;
+
+#[doc(hidden)]
+pub fn __query_add_indent(s: &str) -> String {
+    s.replace('\n', "\n\t")
+}
 
 use edgedb_tokio::Client;
 
@@ -182,24 +188,31 @@ mod args;
 pub use args::EdgedbQueryArgs;
 mod prim;
 pub use prim::{EdgedbJson, EdgedbPrim};
+
+/// Express complex, composable queries through Rust structs and attributes.
 pub mod composable;
 mod refs;
 mod tuples;
 mod value;
+
+extern crate self as edgedb_composable_query;
 
 pub use edgedb_composable_query_derive::EdgedbObject;
 pub use refs::Ref;
 
 use edgedb_protocol::{codec::ObjectShape, value::Value};
 
-pub use nonempty::{nonempty, NonEmpty};
+pub use nonempty;
+
 pub use value::{EdgedbSetValue, EdgedbValue};
 
+/// Struct that can be received from EdgeDB as an Object. Derive this trait for your structs.
 pub trait EdgedbObject: Sized {
     fn from_edgedb_object(shape: ObjectShape, fields: Vec<Option<Value>>) -> Result<Self>;
     // fn to_edgedb_object(&self) -> Result<(ObjectShape, Vec<Option<Value>>)>;
 }
 
+/// Entry-point for querying `EdgedbObject`s of arbitrary cardinality.
 pub async fn query<T: EdgedbSetValue, Args: EdgedbQueryArgs + Send>(
     client: &Client,
     q: &str,

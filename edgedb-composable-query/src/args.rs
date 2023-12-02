@@ -4,6 +4,7 @@ use crate::Result;
 use edgedb_protocol::query_arg::QueryArgs;
 use edgedb_protocol::value::Value;
 
+/// A tuple of query arguments, currently each must be [`EdgedbPrim`].
 pub trait EdgedbQueryArgs {
     type EdgedbArgsType: QueryArgs;
 

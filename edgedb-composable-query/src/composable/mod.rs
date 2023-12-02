@@ -24,9 +24,42 @@
 //! }
 //! ```
 //!
-//! Here're some of the ways to use `EdgedbComposableQuery`:
+//! Here're some of the ways to use this module:
+//!
+//! ```
+//! # tokio_test::block_on(async {
+//! use edgedb_composable_query::{query, EdgedbObject, Ref};
+//! use edgedb_composable_query::composable::{EdgedbComposableQuery, EdgedbComposableSelector};
+//!
+//! #[derive(Debug, PartialEq, Eq, EdgedbObject, EdgedbComposableSelector)]
+//! struct InnerSelector {
+//!    req: String,
+//!    opt: Option<String>,
+//! }
+//!
+//! #[derive(Debug, PartialEq, Eq, EdgedbObject, EdgedbComposableSelector)]
+//! struct OuterSelector {
+//!     inner: Option<InnerSelector>,
+//!
+//!     some_field: Option<String>,
+//!     other_field: String,
+//! }
+//!
+//! #[derive(Debug, PartialEq, Eq, EdgedbObject, EdgedbComposableSelector)]
+//! struct OuterSelectorWithRef {
+//!     inner: Option<Ref<InnerSelector>>,
+//!
+//!     some_field: Option<String>,
+//!     other_field: String,
+//! }
+//!
+//! # anyhow::Ok(())
+//! # }).unwrap();
+//! ```
 
-use crate::{EdgedbQueryArgs, EdgedbSetValue};
+use crate::{EdgedbObject, EdgedbPrim, EdgedbQueryArgs, EdgedbSetValue, Ref};
+
+pub use edgedb_composable_query_derive::EdgedbComposableSelector;
 
 pub enum ComposableQueryResultKind {
     Field,
@@ -37,6 +70,7 @@ pub enum ComposableQueryResultKind {
 pub trait EdgedbComposableSelector {
     const RESULT_TYPE: ComposableQueryResultKind;
 
+    /// should't add `{` and `}` around the selector
     fn format_selector(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error>;
 
     fn format_subquery(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
@@ -44,21 +78,55 @@ pub trait EdgedbComposableSelector {
             ComposableQueryResultKind::Field => {
                 return Ok(());
             }
-            ComposableQueryResultKind::Selector => fmt.write_str(": ")?,
-            ComposableQueryResultKind::FreeObject => fmt.write_str(" := ")?,
+            ComposableQueryResultKind::Selector => fmt.write_str(": {\n")?,
+            ComposableQueryResultKind::FreeObject => fmt.write_str(" := {\n")?,
         };
 
-        Self::format_selector(fmt)
+        Self::format_selector(fmt)?;
+
+        fmt.write_str("\n}")
     }
 }
 
-// impl<T: EdgedbComposableSelector> EdgedbComposableSelector for Vec<T> {
-//     const RESULT_TYPE: ComposableQueryResultKind = T::RESULT_TYPE;
+impl<T: EdgedbPrim> EdgedbComposableSelector for T {
+    const RESULT_TYPE: ComposableQueryResultKind = ComposableQueryResultKind::Field;
 
-//     fn format_selector(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
-//         T::format_selector(fmt)
-//     }
-// }
+    fn format_selector(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
+        Ok(())
+    }
+
+    fn format_subquery(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
+        Ok(())
+    }
+}
+
+impl<T: EdgedbComposableSelector> EdgedbComposableSelector for Vec<T> {
+    const RESULT_TYPE: ComposableQueryResultKind = T::RESULT_TYPE;
+
+    fn format_selector(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
+        T::format_selector(fmt)
+    }
+}
+
+impl<T: EdgedbComposableSelector> EdgedbComposableSelector for Option<T> {
+    const RESULT_TYPE: ComposableQueryResultKind = T::RESULT_TYPE;
+
+    fn format_selector(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
+        T::format_selector(fmt)
+    }
+}
+
+impl<T: EdgedbComposableSelector + EdgedbObject> EdgedbComposableSelector for Ref<T> {
+    const RESULT_TYPE: ComposableQueryResultKind = ComposableQueryResultKind::Selector;
+
+    fn format_selector(fmt: &mut impl std::fmt::Write) -> Result<(), std::fmt::Error> {
+        fmt.write_str("\tid,\n")?;
+
+        T::format_selector(fmt)?;
+
+        Ok(())
+    }
+}
 
 pub trait EdgedbComposableQuery: EdgedbComposableSelector {
     const ARG_NAMES: &'static [&'static str];
@@ -90,9 +158,8 @@ pub trait EdgedbComposableQuery: EdgedbComposableSelector {
 
 #[cfg(test)]
 mod test {
-    use super::EdgedbComposableSelector;
-    use crate::EdgedbObject;
-    use crate::EdgedbSetValue;
+    use crate::composable::EdgedbComposableSelector;
+    use crate::{EdgedbObject, Ref};
 
     #[derive(Debug, PartialEq, Eq, EdgedbObject, EdgedbComposableSelector)]
     struct InnerSelector {
@@ -100,8 +167,34 @@ mod test {
         opt: Option<String>,
     }
 
+    #[derive(Debug, PartialEq, Eq, EdgedbObject, EdgedbComposableSelector)]
+    struct OuterSelector {
+        inner: Option<InnerSelector>,
+
+        some_field: Option<String>,
+        other_field: String,
+    }
+
+    #[derive(Debug, PartialEq, Eq, EdgedbObject, EdgedbComposableSelector)]
+    struct OuterSelectorWithRef {
+        inner: Option<Ref<InnerSelector>>,
+
+        some_field: Option<String>,
+        other_field: String,
+    }
+
     #[test]
-    fn sync_tests() {
-        dbg!()
+    fn selector_tests() {
+        let mut buf = String::new();
+        InnerSelector::format_selector(&mut buf).unwrap();
+        insta::assert_snapshot!(buf);
+
+        let mut buf = String::new();
+        OuterSelector::format_selector(&mut buf).unwrap();
+        insta::assert_snapshot!(buf);
+
+        let mut buf = String::new();
+        OuterSelectorWithRef::format_selector(&mut buf).unwrap();
+        insta::assert_snapshot!(buf);
     }
 }

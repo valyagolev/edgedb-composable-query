@@ -1,0 +1,12 @@
+---
+source: edgedb-composable-query/src/composable/mod.rs
+assertion_line: 167
+expression: buf
+---
+	inner: {
+		id,
+		req,
+		opt
+	},
+	some_field,
+	other_field

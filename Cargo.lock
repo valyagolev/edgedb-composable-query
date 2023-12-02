@@ -360,6 +360,7 @@ dependencies = [
  "edgedb-composable-query-derive",
  "edgedb-protocol",
  "edgedb-tokio",
+ "insta",
  "itertools",
  "nonempty",
  "serde",

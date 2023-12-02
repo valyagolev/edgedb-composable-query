@@ -43,13 +43,13 @@ impl QuerySelector {
     pub fn as_composable_query_result_type(&self) -> TokenStream {
         match self {
             QuerySelector::Selector(..) => {
-                quote! {::edgedb_composable_query::ComposableQueryResultKind::Selector}
+                quote! {::edgedb_composable_query::composable::ComposableQueryResultKind::Selector}
             }
             QuerySelector::Object(..) => {
-                quote! {::edgedb_composable_query::ComposableQueryResultKind::Selector}
+                quote! {::edgedb_composable_query::composable::ComposableQueryResultKind::Selector}
             }
             _ => {
-                quote! {::edgedb_composable_query::ComposableQueryResultKind::Field}
+                quote! {::edgedb_composable_query::composable::ComposableQueryResultKind::Field}
             }
         }
     }
@@ -70,9 +70,9 @@ impl ToTokens for QuerySelector {
                                 n,
                                 quote! {{
                                     let mut buf = String::new();
-                                    <#ty as ::edgedb_composable_query::EdgedbComposableSelector>::format_subquery(&mut buf)?;
+                                    <#ty as ::edgedb_composable_query::composable::EdgedbComposableSelector>::format_subquery(&mut buf)?;
 
-                                    ::edgedb_composable_query::query_add_indent(&buf)
+                                    ::edgedb_composable_query::__query_add_indent(&buf)
                                 }},
                             )
                         }
@@ -85,7 +85,7 @@ impl ToTokens for QuerySelector {
                 tokens.append_all(quote! {
                     fmt.write_fmt(
                         format_args!(
-                            "{{\n\t{}\n}}",
+                            "\t{}",
                             [#( (#names, #vars) ),*].map(
                                 |(n, v)| format!("{}{}", n, v)).join::<&str>(",\n\t")
                         )
@@ -101,7 +101,7 @@ impl ToTokens for QuerySelector {
 
                 tokens.append_all(quote! {
                     fmt.write_fmt(format_args!(
-                        "{{\n{}\n}}",
+                        "{}",
                         [#(#mapping_tuples),*]
                             .iter()
                             .map(|(k, v)| format!("\t{k} := ({v}),"))
@@ -126,7 +126,7 @@ impl ToTokens for QuerySelector {
                     //     #direct
                     // )?;
 
-                    <#ty as ::edgedb_composable_query::EdgedbComposableSelector>::format_selector( fmt)?;
+                    <#ty as ::edgedb_composable_query::composable::EdgedbComposableSelector>::format_selector( fmt)?;
                 });
             }
         };

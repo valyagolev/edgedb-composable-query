@@ -97,7 +97,7 @@ impl ToTokens for QueryVar {
 
                         <#strct as ::edgedb_composable_query::ComposableQuery>::format_query(&mut buf, &args)?;
 
-                        ::edgedb_composable_query::query_add_indent(&buf)
+                        ::edgedb_composable_query::__query_add_indent(&buf)
                     }
                 })
             }
@@ -159,8 +159,8 @@ impl ToTokens for Query {
                 fmt: &mut impl ::std::fmt::Write,
                 args: &::std::collections::HashMap<&str, String>
             ) -> Result<(), ::std::fmt::Error> {
-                use ::edgedb_composable_query::itertools::Itertools;
-                use ::edgedb_composable_query::EdgedbComposableSelector;
+                use ::edgedb_composable_query::__itertools::Itertools;
+                use ::edgedb_composable_query::composable::EdgedbComposableSelector;
 
                 #inner
 

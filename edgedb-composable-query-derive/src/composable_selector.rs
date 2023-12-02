@@ -23,12 +23,12 @@ pub fn derive_composable_selector_impl(
     let result_type = selector.as_composable_query_result_type();
 
     Ok(quote! {
-        impl ::edgedb_composable_query::EdgedbComposableSelector for #ident {
-            const RESULT_TYPE: ::edgedb_composable_query::ComposableQueryResultKind =
+        impl ::edgedb_composable_query::composable::EdgedbComposableSelector for #ident {
+            const RESULT_TYPE: ::edgedb_composable_query::composable::ComposableQueryResultKind =
                 #result_type;
 
             fn format_selector(fmt: &mut impl ::std::fmt::Write) -> Result<(), std::fmt::Error> {
-                use ::edgedb_composable_query::itertools::Itertools;
+                use ::edgedb_composable_query::__itertools::Itertools;
 
                 #selector
 

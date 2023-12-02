@@ -44,7 +44,7 @@ pub fn derive_edgedb_object_impl(item: DeriveInput) -> darling::Result<proc_macr
                 shape: edgedb_protocol::codec::ObjectShape,
                 mut fields: Vec<Option<edgedb_protocol::value::Value>>,
             ) -> anyhow::Result<Self> {
-                // use edgedb_composable_query::EdgedbSetValue;
+                use edgedb_composable_query::EdgedbSetValue;
 
                 #(
                     let mut #field_names = None;
