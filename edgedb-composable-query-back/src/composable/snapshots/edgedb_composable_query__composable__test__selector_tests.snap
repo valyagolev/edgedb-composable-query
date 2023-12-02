@@ -1,0 +1,7 @@
+---
+source: edgedb-composable-query/src/composable/mod.rs
+assertion_line: 261
+expression: buf
+---
+	req := (.req),
+	opt := (.opt),
