@@ -3,7 +3,7 @@ edgedb-composable-query
 
 [![Crates.io](https://img.shields.io/crates/v/edgedb-composable-query.svg)](https://crates.io/crates/edgedb-composable-query)
 [![Docs.rs](https://docs.rs/edgedb-composable-query/badge.svg)](https://docs.rs/edgedb-composable-query)
-[![License](https://img.shields.io/crates/l/edgedb-composable-query.svg)]
+![License](https://img.shields.io/crates/l/edgedb-composable-query.svg)
 
 
 Query arbitrary structs from EdgeDB. Compose queries of arbitrary complexity.
