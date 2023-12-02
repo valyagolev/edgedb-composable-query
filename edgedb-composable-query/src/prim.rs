@@ -7,15 +7,19 @@ use serde::{Deserialize, Serialize};
 
 /// One of the primitive EdgeDB types, including JSON (see [`EdgedbJson`]). Implement this for your types if they are primitive-convertible.
 pub trait EdgedbPrim: Sized {
+    const TYPE_CAST: &'static str;
+
     fn from_edgedb_val(value: Value) -> Result<Self>;
 
     fn to_edgedb_val(self) -> Result<Value>;
 }
 
 macro_rules! impl_prim {
-    ($($t:ty => $v:ident),*) => {
+    ($($t:ty => $v:ident $name:literal),*) => {
         $(
             impl EdgedbPrim for $t {
+                const TYPE_CAST: &'static str = $name;
+
                 fn from_edgedb_val(value: Value) -> Result<Self> {
                     match value {
                         Value::$v(v) => Ok(v),
@@ -47,20 +51,22 @@ macro_rules! impl_prim {
 }
 
 impl_prim! {
-    i16 => Int16,
-    i32 => Int32,
-    i64 => Int64,
-    f32 => Float32,
-    f64 => Float64,
-    bool => Bool,
-    String => Str,
-    Uuid => Uuid
+    i16 => Int16 "int16",
+    i32 => Int32 "int32",
+    i64 => Int64 "int64",
+    f32 => Float32 "float32",
+    f64 => Float64 "float64",
+    bool => Bool "bool",
+    String => Str "str",
+    Uuid => Uuid "uuid"
 }
 
 /// Wrapper around your serializable types to pass them as JSON query arguments
 pub struct EdgedbJson<T: DeserializeOwned + Serialize>(pub T);
 
 impl<T: DeserializeOwned + Serialize> EdgedbPrim for EdgedbJson<T> {
+    const TYPE_CAST: &'static str = "json";
+
     fn from_edgedb_val(value: Value) -> Result<Self> {
         if let Value::Json(s) = value {
             Ok(Self(serde_json::from_str(&s)?))

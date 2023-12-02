@@ -1,10 +1,10 @@
-use edgedb_composable_query_derive::ComposableQuery;
+use edgedb_composable_query_derive::EdgedbComposableQuery;
 
 mod models;
 mod models2;
 mod test2;
 
-#[derive(ComposableQuery)]
+#[derive(EdgedbComposableQuery)]
 #[params(n: i32, v: String)]
 #[with(calc = "n + 2")]
 // #[with(q = "insert Q {n := calc, name := n}")]
@@ -18,7 +18,7 @@ struct InsertQ {
     n: i32,
 }
 
-#[derive(ComposableQuery)]
+#[derive(EdgedbComposableQuery)]
 #[params(a: i32, v: String)]
 #[with(qqqq = InsertQ(n = "a + 1", v = "v"))]
 // #[select("q")] // this is for `select q { v, calc }` // will not support var()
@@ -31,7 +31,7 @@ fn main() {}
 
 #[cfg(test)]
 mod test {
-    use edgedb_composable_query::ComposableQuery;
+    use edgedb_composable_query::EdgedbComposableQuery;
 
     #[test]
     fn show_me() {

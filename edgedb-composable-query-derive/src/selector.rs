@@ -65,7 +65,7 @@ impl ToTokens for QuerySelector {
                     .map(|(n, v)| match v {
                         SelectorValue::SubSelector(ty) => {
                             let ty = ty;
-                            dbg!(ty);
+                            // dbg!(ty);
                             (
                                 n,
                                 quote! {{

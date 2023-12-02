@@ -1,0 +1,33 @@
+---
+source: edgedb-composable-query-derive/src/composable_query.rs
+assertion_line: 115
+expression: formatted
+---
+impl ::edgedb_composable_query::composable::ComposableQuery for InnerById {
+    const ARG_NAMES: &'static [&'static str] = &["id"];
+    type ArgTypes = (Uuid,);
+    type ReturnType = Self;
+    fn format_query(
+        fmt: &mut impl ::std::fmt::Write,
+        args: &::std::collections::HashMap<&str, String>,
+    ) -> Result<(), ::std::fmt::Error> {
+        use ::edgedb_composable_query::__itertools::Itertools;
+        use ::edgedb_composable_query::composable::EdgedbComposableSelector;
+        fmt.write_str("with\n")?;
+        fmt.write_fmt(
+            format_args!(
+                "\t{} := {}{},\n", "id", < Uuid as ::edgedb_composable_query::EdgedbArgs
+                > ::type_cast(), args["id"]
+            ),
+        )?;
+        fmt.write_fmt(
+            format_args!(
+                "\t{} := ({}),\n", "_selector", "select Inner filter .id = id limit 1"
+            ),
+        )?;
+        fmt.write_str(&format!("select ({})", "_selector"))?;
+        Self::format_selector(fmt)?;
+        Ok(())
+    }
+}
+

@@ -1,7 +1,7 @@
-// use edgedb_composable_query_derive::ComposableQuery;
+// use edgedb_composable_query_derive::EdgedbComposableQuery;
 // use edgedb_protocol::model::Uuid;
 
-// #[derive(ComposableQuery)]
+// #[derive(EdgedbComposableQuery)]
 // #[params(arg: i32)]
 // #[select("select Inner limit 1")]
 // struct Inner {
@@ -16,7 +16,7 @@
 //     arg_plus_one: i32,
 // }
 
-// #[derive(ComposableQuery)]
+// #[derive(EdgedbComposableQuery)]
 // #[select("select Outer limit 1")]
 // struct Outer {
 //     id: Uuid,
@@ -26,7 +26,7 @@
 
 // #[cfg(test)]
 // mod test {
-//     use edgedb_composable_query::ComposableQuery;
+//     use edgedb_composable_query::EdgedbComposableQuery;
 
 //     #[test]
 //     fn show_me() {

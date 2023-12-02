@@ -56,6 +56,7 @@ impl ComposableQueryAttribute {
     pub fn into_query(
         attrs: Vec<Self>,
         fields: &ast::Data<util::Ignored, ComposableQueryReturn>,
+        selector_only: bool,
     ) -> darling::Result<Query> {
         let mut errors = darling::Error::accumulator();
 
@@ -174,7 +175,10 @@ impl ComposableQueryAttribute {
                             .as_ref()
                             .cloned()
                             .expect("We thought we have named fields here");
-                        (fname.clone(), f.var.clone().unwrap_or(QueryVar::Var(fname)))
+                        (
+                            fname.clone(),
+                            f.var.clone().unwrap_or(QueryVar::Var(format!(".{fname}"))),
+                        )
                     })
                     .collect_vec(),
             ))

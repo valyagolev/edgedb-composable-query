@@ -236,7 +236,7 @@ impl<T1: EdgedbArgs, T2: EdgedbArgs> EdgedbArgs for (T1, T2) {
     }
 }
 
-pub async fn query<T: ComposableQuery>(
+pub async fn query<T: EdgedbComposableQuery>(
     client: edgedb_tokio::Client,
     args: T::ArgTypes,
 ) -> Result<T::ReturnType, edgedb_tokio::Error> {

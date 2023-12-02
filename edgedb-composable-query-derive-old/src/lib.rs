@@ -14,43 +14,6 @@ mod query;
 mod selector;
 mod tokens;
 
-fn derive_composable_query_impl(item: DeriveInput) -> darling::Result<proc_macro2::TokenStream> {
-    let selector_impl = derive_composable_query_selector_impl(item.clone(), false)?;
-
-    let item = ComposableQueryOpts::from_derive_input(&item)?;
-    let attribs = ComposableQueryAttribute::from_attrs(&item.attrs)?;
-    let query = ComposableQueryAttribute::into_query(attribs, &item.data)?;
-    let selector = &query.result;
-    let ident = &item.ident;
-
-    Ok(quote! {
-        #selector_impl
-
-        impl ::edgedb_composable_query::ComposableQuery for #ident {
-            #query
-        }
-    })
-}
-
-#[cfg(test)]
-fn derive_composable_query_for_test(
-    item: proc_macro2::TokenStream,
-) -> darling::Result<proc_macro2::TokenStream> {
-    let item = syn::parse2::<DeriveInput>(item)?;
-
-    derive_composable_query_impl(item)
-}
-
-#[proc_macro_derive(ComposableQuery, attributes(params, with, var, select, direct))]
-pub fn derive_composable_query(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let item = syn::parse_macro_input!(item as DeriveInput);
-
-    match derive_composable_query_impl(item) {
-        Ok(ts) => ts.into(),
-        Err(e) => e.write_errors().into(),
-    }
-}
-
 #[proc_macro_derive(EdgedbComposableSelector, attributes(params, with, var))]
 pub fn derive_composable_query_selector(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let item = syn::parse_macro_input!(item as DeriveInput);
@@ -101,7 +64,7 @@ mod test {
     fn insta_test_struct() {
         let input = quote! {
 
-            #[derive(ComposableQuery)]
+            #[derive(EdgedbComposableQuery)]
             #[params(n: i32, v: String)]
             #[with(q = crate::InsertQ2(n = "a + 1", v = "v"))]
             // #[with(calc = "n + 2")]
@@ -128,7 +91,7 @@ mod test {
     fn insta_test_struct2() {
         let input = quote! {
 
-            #[derive(ComposableQuery)]
+            #[derive(EdgedbComposableQuery)]
             struct Inner {
                 id: Uuid,
                 opt: Option<String>,
@@ -149,7 +112,7 @@ mod test {
     fn insta_test_struct_wrapper() {
         let input = quote! {
 
-            #[derive(ComposableQuery)]
+            #[derive(EdgedbComposableQuery)]
             #[params(id: Uuid)]
             #[select("select Inner filter .id = id limit 1")]
             struct InnerById(Inner);
@@ -186,7 +149,7 @@ mod test {
     fn insta_test_empty_struct() {
         let input = quote! {
 
-            #[derive(ComposableQuery)]
+            #[derive(EdgedbComposableQuery)]
             #[params(n: i32)]
             #[direct("select User limit 1")]
             struct ReshuffleTuple;
@@ -202,7 +165,7 @@ mod test {
     fn insta_test_tuple_named() {
         let input = quote! {
 
-            #[derive(ComposableQuery)]
+            #[derive(EdgedbComposableQuery)]
             #[params(n: i32, v: String)]
             struct ReshuffleTuple(
                 #[var("v")]
@@ -222,7 +185,7 @@ mod test {
     fn insta_test_tuple_direct() {
         let input = quote! {
 
-            #[derive(ComposableQuery)]
+            #[derive(EdgedbComposableQuery)]
             #[params(n: i32, v: String)]
             #[direct(v, n)]
             struct ReshuffleTuple(i32, String,);

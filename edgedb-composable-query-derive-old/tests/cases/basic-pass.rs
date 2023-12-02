@@ -1,6 +1,6 @@
-use edgedb_composable_query_derive::ComposableQuery;
+use edgedb_composable_query_derive::EdgedbComposableQuery;
 
-#[derive(ComposableQuery)]
+#[derive(EdgedbComposableQuery)]
 #[params(n: i32, v: String)]
 #[with(calc = "n + 2")]
 #[with(q = "insert Q {n := calc, name := n}")]
@@ -14,7 +14,7 @@ struct InsertQ {
     by_name: i32,
 }
 
-#[derive(ComposableQuery)]
+#[derive(EdgedbComposableQuery)]
 #[params(a: i32, v: String)]
 #[with(q = InsertQ(n = "a + 1", v = "v"))]
 #[select("q")] // this is for `select q { v, calc }` // will not support var()

@@ -1,4 +1,4 @@
-use edgedb_composable_query_derive::{ComposableQuery, EdgedbComposableSelector};
+use edgedb_composable_query_derive::{EdgedbComposableQuery, EdgedbComposableSelector};
 use edgedb_protocol::model::Uuid;
 
 #[derive(EdgedbComposableSelector, Debug)]
@@ -11,24 +11,24 @@ struct Inner {
     strlen: i64,
 }
 
-#[derive(ComposableQuery)]
+#[derive(EdgedbComposableQuery)]
 #[params(id: Uuid)]
 #[select("select Inner filter .id = id")]
 struct InnerById(Inner);
 
-#[derive(ComposableQuery, Debug)]
+#[derive(EdgedbComposableQuery, Debug)]
 #[params(cnt: usize)]
 #[select("select Inner limit cnt")]
 struct AllInner(Vec<Inner>);
 
-#[derive(ComposableQuery)]
+#[derive(EdgedbComposableQuery)]
 #[params(req: String, opt: Option<String>)]
 #[select("insert Inner { req := req, opt := opt }")]
 struct Insert(Inner);
 
 #[cfg(test)]
 mod test {
-    use edgedb_composable_query::{query, ComposableQuery, EdgedbComposableSelector};
+    use edgedb_composable_query::{query, EdgedbComposableQuery, EdgedbComposableSelector};
 
     #[test]
     fn show_me() {

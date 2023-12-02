@@ -65,7 +65,7 @@ impl ToTokens for Params {
                 fmt.write_fmt(format_args!(
                     "\t{} := {}{},\n",
                     #name,
-                    <#ty as ::edgedb_composable_query::EdgedbArgs>::type_cast(),
+                    <#ty as ::edgedb_composable_query::EdgedbPrim>::TYPE_CAST,
                     args[#name]
                 ))?;
             })
@@ -95,7 +95,7 @@ impl ToTokens for QueryVar {
                         let args = [#( #args_kv ),*].into();
                         let mut buf = String::new();
 
-                        <#strct as ::edgedb_composable_query::ComposableQuery>::format_query(&mut buf, &args)?;
+                        <#strct as ::edgedb_composable_query::EdgedbComposableQuery>::format_query(&mut buf, &args)?;
 
                         ::edgedb_composable_query::__query_add_indent(&buf)
                     }
@@ -142,18 +142,28 @@ impl ToTokens for Query {
             .cloned()
             .unzip::<_, _, Vec<String>, Vec<Type>>();
 
-        let final_selector = match &self.result {
-            QuerySelector::Selector(what, _) => quote! {format!("select ({})", #what)},
-            QuerySelector::Object(_) => quote! {"select "},
+        let self_type = quote! {Self};
+
+        let (final_selector, final_type) = match &self.result {
+            QuerySelector::Selector(what, _) => (quote! {format!("select ({})", #what)}, self_type),
+            QuerySelector::Object(_) => (quote! {"select "}, self_type),
             // QuerySelector::Tuple(_) => quote! {"select "},
-            QuerySelector::Direct(what, _ty) => quote! {format!("select ({})", #what)},
+            QuerySelector::Direct(what, _ty) => {
+                (quote! {format!("select ({})", #what)}, quote! {#_ty})
+            }
+        };
+
+        let atypes = if argtypes.len() == 0 {
+            quote! {()}
+        } else {
+            quote! {(#( #argtypes ),* ,)}
         };
 
         tokens.append_all(quote! {
             const ARG_NAMES: &'static [&'static str] = &[#( #argnames ),*];
 
-            type ArgTypes = ( #( #argtypes ),* , );
-            type ReturnType = Self;
+            type ArgTypes = #atypes;
+            type ReturnType = #final_type;
 
             fn format_query(
                 fmt: &mut impl ::std::fmt::Write,
@@ -165,8 +175,11 @@ impl ToTokens for Query {
                 #inner
 
                 fmt.write_str(&#final_selector)?;
+                fmt.write_str(" {\n")?;
 
-                Self::format_selector(fmt)?;
+                <#final_type as EdgedbComposableSelector>::format_selector(fmt)?;
+
+                fmt.write_str("\n}")?;
 
                 Ok(())
             }

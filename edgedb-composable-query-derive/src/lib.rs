@@ -1,3 +1,4 @@
+use composable_query::derive_composable_query_impl;
 use composable_selector::derive_composable_selector_impl;
 use object::derive_edgedb_object_impl;
 use syn::DeriveInput;
@@ -24,7 +25,17 @@ pub fn derive_edgedb_object(item: proc_macro::TokenStream) -> proc_macro::TokenS
 pub fn derive_edgedb_composable_selector(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let item = syn::parse_macro_input!(item as DeriveInput);
 
-    match derive_composable_selector_impl(item, true) {
+    match derive_composable_selector_impl(item) {
+        Ok(ts) => ts.into(),
+        Err(e) => e.write_errors().into(),
+    }
+}
+
+#[proc_macro_derive(EdgedbComposableQuery, attributes(params, with, var, select, direct))]
+pub fn derive_composable_query(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let item = syn::parse_macro_input!(item as DeriveInput);
+
+    match derive_composable_query_impl(item) {
         Ok(ts) => ts.into(),
         Err(e) => e.write_errors().into(),
     }
